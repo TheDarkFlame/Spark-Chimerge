@@ -18,12 +18,9 @@ import org.apache.spark.api.java.function.Function2;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
-
+@SuppressWarnings("serial")
 public class SparkTesting implements Serializable {
-	
-	private static final long serialVersionUID = 1L;
 
-	@SuppressWarnings("serial")
 	public static void main(String[] args) {
 		
 		Logger.getRootLogger().setLevel(Level.OFF);
