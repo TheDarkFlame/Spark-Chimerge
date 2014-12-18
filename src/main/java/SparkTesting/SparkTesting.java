@@ -19,18 +19,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 
-/**
- * 
- * how to handle [1,2] and [2,3] merge ?
- * 
- * @author rmysoreradhakrishna
- *
- */
 public class SparkTesting implements Serializable {
 	
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 
 	@SuppressWarnings("serial")
