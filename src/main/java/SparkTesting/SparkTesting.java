@@ -144,6 +144,7 @@ public class SparkTesting implements Serializable {
 		
 		printBlocks(blocks);
 		System.out.println("Time " + (System.currentTimeMillis() - time));
+		jsc.stop();
 	}
 	
 	private static void printBlocks(Set<Block> blocks){

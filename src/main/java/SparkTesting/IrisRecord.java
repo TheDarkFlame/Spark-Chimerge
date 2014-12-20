@@ -56,5 +56,35 @@ public class IrisRecord implements Serializable {
 	public String toString() {
 		return sepalLength.toString();
 	}
-	
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((sepalLength == null) ? 0 : sepalLength.hashCode());
+		result = prime * result + ((species == null) ? 0 : species.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		IrisRecord other = (IrisRecord) obj;
+		if (sepalLength == null) {
+			if (other.sepalLength != null)
+				return false;
+		} else if (!sepalLength.equals(other.sepalLength))
+			return false;
+		if (species == null) {
+			if (other.species != null)
+				return false;
+		} else if (!species.equals(other.species))
+			return false;
+		return true;
+	}
 }
