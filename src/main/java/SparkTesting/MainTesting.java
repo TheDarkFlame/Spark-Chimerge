@@ -1,6 +1,9 @@
 package SparkTesting;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -11,21 +14,33 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
 
 import scala.Tuple2;
 
-import com.clearspring.analytics.util.Lists;
+import com.google.common.collect.Lists;
+
 
 /**
  * 1. Algorithm to be fixed.  (uniqueValues, combine their classLevel occurance. Change matrix impl and compute Chimerge).
  * 2. Accessing consecutive elements
- * 3. Take out for loop within reduce. 
+ * 3. Take out for loop within reduce.
+ * 
+ *  
+ *  1. Unique attribute value
+ *  2. Sort by attribute value
+ *  3. partition with redundancy.
+ *  4. combine adjacent blocks and compute ChiSquare
+ *  5. Take global minimum.
+ *  6. merge ChiSquareUnits
+ *  7. Merge adjacent blocks(by partitioning) until they don't further merge. 
+ *  8. Then back to Step 2:
  *
  */
-@SuppressWarnings("unchecked")
+@SuppressWarnings({ "serial" })
 public class MainTesting implements Serializable {
 	
 	public static void main(String[] args) {
@@ -33,10 +48,11 @@ public class MainTesting implements Serializable {
 	    SparkConf sparkConf = new SparkConf().setAppName("Local");
 	    sparkConf.setMaster("local");
 	    JavaSparkContext jsc = new JavaSparkContext(sparkConf);
+
+	    // Read the data from the file.
+	    JavaRDD<String> stringRdd = jsc.textFile("./testData/IrisDuplicate.txt", 5);
 	    
-	    long time = System.currentTimeMillis();
-	    JavaRDD<String> stringRdd = jsc.textFile("./testData/IrisDuplicate.txt", 4);
-	    
+	    //Step: Map raw line read from file to a IrisRecord.
 	    JavaRDD<IrisRecord> data = stringRdd.map(new Function<String, IrisRecord>() {
 
 			public IrisRecord call(String v1) throws Exception {
@@ -44,15 +60,19 @@ public class MainTesting implements Serializable {
 			}
 		});
 	    
+	    // Create a JavaPairRDD with attribute value, record itself.
 	    JavaPairRDD<Double, IrisRecord> mapToPair = data.mapToPair(new PairFunction<IrisRecord, Double, IrisRecord>() {
 			
 			public Tuple2<Double, IrisRecord> call(IrisRecord t) throws Exception {
-				return new Tuple2(t.getSepalLength(), t);
+				return new Tuple2<Double, IrisRecord>(t.getSepalLength(), t);
 			}
 		});
 	    
+	    //Group by key to pull all records with same value together.
 	    JavaPairRDD<Double, Iterable<IrisRecord>> groupByKey = mapToPair.groupByKey();
 	    
+	    //Now lets create a Blockie which contains value and all its records which have that value. We need this for computing
+	    // Chisquare.
 	    JavaPairRDD<Double, Blockie> blocks = groupByKey.mapValues(new Function<Iterable<IrisRecord>, Blockie>() {
 
 			public Blockie call(Iterable<IrisRecord> v1) throws Exception {
@@ -62,6 +82,7 @@ public class MainTesting implements Serializable {
 			}
 		});
 	    
+	    // Lets sort the blocks by attribute value.
 	    JavaPairRDD<Double, Blockie> sortedBlocksRdd = blocks.sortByKey(true);
 	    
 	    //Map Partitions With index
@@ -70,61 +91,98 @@ public class MainTesting implements Serializable {
 
 			public Iterator<Tuple2<Integer, Tuple2<Double, Blockie>>> call(Integer v1,
 					Iterator<Tuple2<Double, Blockie>> v2) throws Exception {
-				List<Tuple2<Integer, Tuple2<Double, Blockie>>> list = Lists.newArrayList();
-				List<Tuple2<Double, Blockie>> tupleList = Lists.newArrayList();
-				while(v2.hasNext()) {
-					tupleList.add(v2.next());
-				}
 				
-				for(Tuple2<Double, Blockie> tuple: tupleList) {
-					list.add(new Tuple2<Integer, Tuple2<Double,Blockie>>(v1, tuple));
+				List<Tuple2<Integer, Tuple2<Double, Blockie>>> list = Lists.newArrayList();
+				while(v2.hasNext()) {
+					Tuple2<Double,Blockie> next = v2.next();
+					list.add(new Tuple2<Integer, Tuple2<Double,Blockie>>(v1, next));
 				}
-				 
 				if(v1 > 0) {
-					//This should not be done for first partition
-					list.add(new Tuple2<Integer, Tuple2<Double,Blockie>>(v1 - 1, tupleList.get(0)));
+					// This step is the one which takes the first element from this
+					// partition and puts it in the previous partition. 
+					// Hence maintaining the data continuity even with partitions.
+					Tuple2<Double, Blockie> firstRecord = list.get(0)._2();
+					list.add(new Tuple2<Integer, Tuple2<Double,Blockie>>(v1 - 1, firstRecord));
 				}
 				return list.iterator();
 			}
 		}, false);
 	    
-	    //Map to Pair
-	    JavaPairRDD<Integer, Tuple2<Double, Blockie>> mapToPartition = mapPartitionsWithIndex.mapToPair(new PairFunction<Tuple2<Integer,Tuple2<Double, Blockie>>, Integer, Tuple2<Double, Blockie>>() {
+	    // We have not yet partioned the data. We have just assigned each blockie to a partition number in the previous step.
+	    // The below step creates the partitions based on the partition number we assigned previously.
+	    JavaPairRDD<Integer, Tuple2<Double, Blockie>> mappedPartitions = mapPartitionsWithIndex
+	    		.mapToPair(new PairFunction<Tuple2<Integer,Tuple2<Double, Blockie>>, Integer, Tuple2<Double, Blockie>>() {
 
 			public Tuple2<Integer, Tuple2<Double, Blockie>> call(Tuple2<Integer, Tuple2<Double, Blockie>> t) throws Exception {
-				return new Tuple2<Integer, Tuple2<Double,Blockie>>(t._1(), t._2());
+				return t;
+			}
+		}).partitionBy(
+				new SimplePartitioner(sortedBlocksRdd.partitions().size())
+			);
+	    
+	    
+	    // now create ChiSqUnit and compute chiSquare.
+	    JavaRDD<ChisquareUnit> chiSquaredRdd = mappedPartitions.mapPartitions(new FlatMapFunction<Iterator<Tuple2<Integer,Tuple2<Double,Blockie>>>, ChisquareUnit>() {
+
+			public Iterable<ChisquareUnit> call(Iterator<Tuple2<Integer, Tuple2<Double, Blockie>>> t)
+					throws Exception {
+				List<Tuple2<Double, Blockie>> rawList = Lists.newArrayList();
+				List<ChisquareUnit> returnList = Lists.newArrayList();
+				
+				while(t.hasNext()) {
+					rawList.add(t.next()._2());
+				}
+				// Lets sort the data again. This is because when we the data was added from the previous partition,
+				// the sorting may have been lost. Since the partition fits into the worker's memory
+				// we don't have to create an RDD to sort the partition data.
+				Collections.sort(rawList, new Comparator<Tuple2<Double, Blockie>>() {
+
+					public int compare(Tuple2<Double, Blockie> o1, Tuple2<Double, Blockie> o2) {
+						return BigDecimal.valueOf(o1._1()).compareTo(BigDecimal.valueOf(o2._1()));
+					}
+				});
+
+				for(int i = 0; i < rawList.size() - 1; i++) {
+					ChisquareUnit unit = new ChisquareUnit(rawList.get(i)._2(), rawList.get(i + 1)._2());
+					// Compute the ChiSquare.
+					unit.computeChiSquare();
+					returnList.add(unit);
+				}
+				return returnList;
 			}
 		});
 	    
-	    JavaPairRDD<Integer, Tuple2<Double, Blockie>> mappedPartitions = mapToPartition.partitionBy(new SimplePartitioner(sortedBlocksRdd.partitions().size()));
+	    // Compute the Global minimum of the Chisquare and then merge the Blocks with the minimum value. 
+	    BigDecimal min = BigDecimal.valueOf(chiSquaredRdd.min(new Sorter()).getChiSquareValue());
+	    final Double minimum = min.doubleValue();
 	    
-	    // apply function to each partition to reduce
-	    // apple chimerge to each partition.
+	    //TODO: Incomplete from here..
+	    // ******* begin loop : combine *******
+
+	    JavaRDD<Blockie> bh = chiSquaredRdd.mapPartitions(new FlatMapFunction<Iterator<ChisquareUnit>, Blockie>() {
+
+			public Iterable<Blockie> call(Iterator<ChisquareUnit> t) throws Exception {
+				List<Blockie> blocks = Lists.newArrayList();
+				while(t.hasNext()) {
+					ChisquareUnit chUnit = t.next();
+					if (BigDecimal.valueOf(chUnit.getChiSquareValue()).compareTo(BigDecimal.valueOf(minimum)) == 0) {
+						blocks.add(chUnit.getBlock1().merge(chUnit.getBlock2()));
+					} else {
+						blocks.add(chUnit.getBlock1());
+						blocks.add(chUnit.getBlock2());
+					}
+				}
+				return blocks;
+			}
+		});
 	    
+
+	    // ******* end loop : combine *******
 	    
 	    // Till here blocks are unique and sorted. Part of Problem 1.
 	    System.out.println("Stopping");
 	    jsc.stop();
 	    
-	}
-	
-	private static class Blockie implements Serializable {
-		private List<IrisRecord> records;
-		
-		private Double id;
-
-		public Blockie(List<IrisRecord> records, Double id) {
-			this.records = records;
-			this.id = id;
-		}
-
-		public List<IrisRecord> getRecords() {
-			return records;
-		}
-
-		public Double getId() {
-			return id;
-		}
 	}
 	
 	private static class SimplePartitioner extends Partitioner {
@@ -144,6 +202,11 @@ public class MainTesting implements Serializable {
 		public int numPartitions() {
 			return this.partitions;
 		}
-		
+	}
+	
+	private static class Sorter implements Comparator<ChisquareUnit>, Serializable {
+		public int compare(ChisquareUnit o1, ChisquareUnit o2) {
+			return BigDecimal.valueOf(o1.getChiSquareValue()).compareTo(BigDecimal.valueOf(o2.getChiSquareValue()));
+		}
 	}
 }

@@ -15,25 +15,19 @@ import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
 
 /**
- * {6.1, Yes
- * 6.1, No}    does not work well. This should be chiSq(0) but i get chiSq(2)
- * Unique values in rows inside matrix.
- * Still keep the list.
- * Can I compute Chisquare ? Can i merge     
- * @author rmysoreradhakrishna
  *
  */
 public class ChisquareUnit implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
-	private Block block1;
+	private Blockie block1;
 
-	private Block block2;
+	private Blockie block2;
 
 	private Double chiSquareValue;
 
-	public ChisquareUnit(Block block1, Block block2) {
+	public ChisquareUnit(Blockie block1, Blockie block2) {
 		this.block1 = block1;
 		this.block2 = block2;
 		
@@ -47,16 +41,16 @@ public class ChisquareUnit implements Serializable {
 		return chiSquareValue;
 	}
 
-	public Block getBlock1() {
+	public Blockie getBlock1() {
 		return block1;
 	}
 
-	public Block getBlock2() {
+	public Blockie getBlock2() {
 		return block2;
 	}
 
-	private Table<String, Double, Integer> computeSingleRowMatrix(Block block) {
-		List<IrisRecord> records = block.getBlock();
+	private Table<String, Double, Integer> computeSingleRowMatrix(Blockie block) {
+		List<IrisRecord> records = block.getAllRecords();
 		Set<Double> uniqueClassLabel = Sets.newHashSet();
 		for(IrisRecord i: records){
 			uniqueClassLabel.add(i.getSpecies());
@@ -106,5 +100,10 @@ public class ChisquareUnit implements Serializable {
 			}
 		}
 		return array;
+	}
+	
+	@Override
+	public String toString(){
+		return "ChisquareUnit " + block1 + " " + block2 ;
 	}
 }
