@@ -1,6 +1,7 @@
 package SparkTesting;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,6 +42,14 @@ public class Blockie implements Serializable {
 
 	public Map<Double, List<IrisRecord>> getMap() {
 		return map;
+	}
+	
+	public BigDecimal getFingerPrint(){
+		BigDecimal fingerPrint = BigDecimal.ZERO;
+		for(Double d: getIds()) {
+			fingerPrint = fingerPrint.add(BigDecimal.valueOf(d));
+		}
+		return fingerPrint.divide(BigDecimal.valueOf(getIds().size()));
 	}
 	
 	public Blockie merge(Blockie b) {

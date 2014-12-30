@@ -47,10 +47,15 @@ public class MainTesting implements Serializable {
 		Logger.getRootLogger().setLevel(Level.OFF);
 	    SparkConf sparkConf = new SparkConf().setAppName("Local");
 	    sparkConf.setMaster("local");
+	    sparkConf.set("spark.executor.memory", "1g");
+	    sparkConf.set("spark.driver.memory", "1g");
 	    JavaSparkContext jsc = new JavaSparkContext(sparkConf);
+	    
+	    
 
+	    long startTime = System.currentTimeMillis();
 	    // Read the data from the file.
-	    JavaRDD<String> stringRdd = jsc.textFile("./testData/IrisDuplicate.txt", 5);
+	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", 5);
 	    
 	    //Step: Map raw line read from file to a IrisRecord.
 	    JavaRDD<IrisRecord> data = stringRdd.map(new Function<String, IrisRecord>() {
@@ -156,10 +161,8 @@ public class MainTesting implements Serializable {
 	    BigDecimal min = BigDecimal.valueOf(chiSquaredRdd.min(new Sorter()).getChiSquareValue());
 	    final Double minimum = min.doubleValue();
 	    
-	    //TODO: Incomplete from here..
-	    // ******* begin loop : combine *******
 
-	    JavaRDD<Blockie> bh = chiSquaredRdd.mapPartitions(new FlatMapFunction<Iterator<ChisquareUnit>, Blockie>() {
+	    JavaRDD<Blockie> cm = chiSquaredRdd.mapPartitions(new FlatMapFunction<Iterator<ChisquareUnit>, Blockie>() {
 
 			public Iterable<Blockie> call(Iterator<ChisquareUnit> t) throws Exception {
 				List<Blockie> blocks = Lists.newArrayList();
@@ -176,13 +179,65 @@ public class MainTesting implements Serializable {
 			}
 		});
 	    
+	    //TODO: Incomplete from here..
+	    // ******* begin loop : combine *******
+	    JavaRDD<Blockie> jk = cm.mapPartitions(new FlatMapFunction<Iterator<Blockie>, Blockie>() {
 
-	    // ******* end loop : combine *******
+			public Iterable<Blockie> call(Iterator<Blockie> t) throws Exception {
+				List<Blockie> list = Lists.newArrayList();
+				List<Blockie> mergedList = Lists.newArrayList();
+				while(t.hasNext()) {
+					list.add(t.next());
+				}
+				
+				Collections.sort(list, new Comparator<Blockie>(){
+
+					public int compare(Blockie o1, Blockie o2) {
+						return o1.getFingerPrint().compareTo(o2.getFingerPrint());
+					}
+					
+				});
+				
+				Blockie current = list.get(0);
+				int i = 1;
+				while(i < list.size()) {
+					Blockie next = list.get(i);
+					if(current.contains(next)) {
+						//Nothing.
+					} else if(next.contains(current)) {
+						current = next;
+					} else if(current.overlaps(next)) {
+						current = current.merge(next);
+					} else {
+						mergedList.add(current);
+						current = next;
+					}
+					i++;
+				}
+				
+				if(current  != null) {
+					mergedList.add(current);
+				}
+				
+				return mergedList;
+			}
+		});
 	    
-	    // Till here blocks are unique and sorted. Part of Problem 1.
-	    System.out.println("Stopping");
+	    printBlockies(jk);
+	    // merge within partition
+	    // re partition the data again and maintain continuity
+
+	    
+	    // ******* end loop : combine *******
+	    System.out.println("Time to run: " + (System.currentTimeMillis() - startTime));	    
 	    jsc.stop();
 	    
+	}
+	
+	public static void printBlockies(JavaRDD<Blockie> bh) {
+		for (Blockie b : bh.collect()) {
+			System.out.println(b.getIds());
+		}
 	}
 	
 	private static class SimplePartitioner extends Partitioner {
