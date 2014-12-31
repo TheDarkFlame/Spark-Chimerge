@@ -49,7 +49,7 @@ public class MainTesting implements Serializable {
 	    
 	    long startTime = System.currentTimeMillis();
 	    // Read the data from the file.
-	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", 5);
+	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", 1);
 	    
 	    //Step: Map raw line read from file to a IrisRecord.
 	    JavaRDD<IrisRecord> data = stringRdd.map(new Function<String, IrisRecord>() {
@@ -81,8 +81,13 @@ public class MainTesting implements Serializable {
 	    BigDecimal min = BigDecimal.valueOf(Double.MIN_VALUE);
 		BigDecimal threshold = BigDecimal.valueOf(4.605);
 		JavaRDD<Blockie> sourceRdd = null;
-	    
-	    while(min.compareTo(threshold) < 0) {
+		while(min.compareTo(threshold) < 0) {
+		
+		/*******************/
+//		int index = 0;
+//		while(index < 5) {
+//	    	index++;
+	    /*******************/
 	    	
 		    // Lets sort the blocks by attribute value.
 		    JavaPairRDD<Double, Blockie> sortedBlocksRdd = blocks.sortByKey(true);
@@ -135,8 +140,8 @@ public class MainTesting implements Serializable {
 					while(t.hasNext()) {
 						rawList.add(t.next()._2());
 					}
-					// Lets sort the data again. This is because when the data was added from the previous partition,
-					// the sorting may have been lost. Since the partition fits into the worker's memory
+					// Lets sort the data again. This is because when the data was added to the previous partition,
+					// the sorted arrangement may have been lost. Since the partition fits into the worker's memory
 					// we don't have to create a RDD to sort the partition data.
 					Collections.sort(rawList, new Comparator<Tuple2<Double, Blockie>>() {
 	
@@ -159,6 +164,8 @@ public class MainTesting implements Serializable {
 		    min = BigDecimal.valueOf(chiSquaredRdd.min(new Sorter()).getChiSquareValue());
 		    final Double minimum = min.doubleValue();
 		    
+		    System.out.println("Min " + min);
+		    
 		    JavaRDD<Blockie> cm = chiSquaredRdd.mapPartitions(new FlatMapFunction<Iterator<ChisquareUnit>, Blockie>() {
 	
 				public Iterable<Blockie> call(Iterator<ChisquareUnit> t) throws Exception {
@@ -179,11 +186,9 @@ public class MainTesting implements Serializable {
 		    
 		    // ******* begin loop : combine *******
 		    long blockCount = 0, previousBlockCount = 0;
-		    JavaRDD<Blockie> jk = null;
 		    sourceRdd = cm;
-		    
 		    do {
-				jk = sourceRdd.mapPartitions(new FlatMapFunction<Iterator<Blockie>, Blockie>() {
+				sourceRdd = sourceRdd.mapPartitions(new FlatMapFunction<Iterator<Blockie>, Blockie>() {
 	
 					public Iterable<Blockie> call(Iterator<Blockie> t) throws Exception {
 						List<Blockie> list = Lists.newArrayList();
@@ -214,19 +219,30 @@ public class MainTesting implements Serializable {
 							}
 							i++;
 						}
-	
 						if (current != null) {
 							mergedList.add(current);
 						}
 						return mergedList;
 					}
 				});
-	
-				sourceRdd  = jk.distinct();
+				
 				previousBlockCount = blockCount;
 				blockCount = sourceRdd.count();
+				System.out.println(blockCount + " " + previousBlockCount);
 				
 				if(previousBlockCount != blockCount) {
+					
+					//TODO:
+					sourceRdd.mapPartitionsWithIndex(new Function2<Integer, Iterator<Blockie>, Iterator<Blockie>>() {
+
+						public Iterator<Blockie> call(Integer v1, Iterator<Blockie> v2) throws Exception {
+							while(v2.hasNext()){
+								System.out.println(v1 + " " + v2.next().getIds());
+							}
+							return v2;
+						}
+					}, true).collect();
+					//TODO:
 					sourceRdd = sourceRdd.mapToPair(new PairFunction<Blockie, BigDecimal, Blockie>() {
 		
 						public Tuple2<BigDecimal, Blockie> call(Blockie t) throws Exception {
@@ -250,10 +266,11 @@ public class MainTesting implements Serializable {
 								// Hence maintaining the data continuity even with partitions.
 								Tuple2<BigDecimal, Blockie> firstRecord = list.get(0)._2();
 								list.add(new Tuple2<Integer, Tuple2<BigDecimal,Blockie>>(v1 - 1, firstRecord));
+								list.remove(0);
 							}
 							return list.iterator();
 						}
-					}, false)
+					}, true)
 					.mapToPair(new PairFunction<Tuple2<Integer,Tuple2<BigDecimal,Blockie>>, Integer, Tuple2<BigDecimal, Blockie>>() {
 		
 						public Tuple2<Integer, Tuple2<BigDecimal, Blockie>> call(Tuple2<Integer, Tuple2<BigDecimal, Blockie>> t)
@@ -280,8 +297,11 @@ public class MainTesting implements Serializable {
 				}
 			});
 		    
+		    //printBlocks(sourceRdd);
+		    System.out.println("Done " + sourceRdd.count());
+		    
 	    } // end of big while (Threshold value)
-	    
+
 	    printBlockRanges(sourceRdd);
 	    System.out.println("Time to run: " + (System.currentTimeMillis() - startTime));	    
 	    jsc.stop();
@@ -291,6 +311,12 @@ public class MainTesting implements Serializable {
 	public static void printBlockRanges(JavaRDD<Blockie> bh) {
 		for (Blockie b : bh.collect()) {
 			System.out.println(b.getRange());
+		}
+	}
+	
+	public static void printBlocks(JavaRDD<Blockie> bh) {
+		for (Blockie b : bh.collect()) {
+			System.out.println(b.getIds());
 		}
 	}
 	

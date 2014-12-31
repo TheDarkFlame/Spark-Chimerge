@@ -62,7 +62,7 @@ public class Blockie implements Serializable {
 	}
 	
 	public boolean overlaps(Blockie b) {
-		return Sets.intersection(this.getIds(), b.getIds()).size() > 0;
+		return !Sets.intersection(this.getIds(), b.getIds()).isEmpty();
 	}
 	
 	public List<IrisRecord> getAllRecords() {
