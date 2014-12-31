@@ -25,10 +25,6 @@ import com.google.common.collect.Lists;
 
 
 /**
- * 1. Algorithm to be fixed.  (uniqueValues, combine their classLevel occurance. Change matrix impl and compute Chimerge).
- * 2. Accessing consecutive elements
- * 3. Take out for loop within reduce.
- * 
  *  
  *  1. Unique attribute value
  *  2. Sort by attribute value
@@ -51,15 +47,12 @@ public class MainTesting implements Serializable {
 	    sparkConf.set("spark.driver.memory", "1g");
 	    JavaSparkContext jsc = new JavaSparkContext(sparkConf);
 	    
-	    
-
 	    long startTime = System.currentTimeMillis();
 	    // Read the data from the file.
 	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", 5);
 	    
 	    //Step: Map raw line read from file to a IrisRecord.
 	    JavaRDD<IrisRecord> data = stringRdd.map(new Function<String, IrisRecord>() {
-
 			public IrisRecord call(String v1) throws Exception {
 				return new IrisRecord(v1);
 			}
@@ -67,7 +60,6 @@ public class MainTesting implements Serializable {
 	    
 	    // Create a JavaPairRDD with attribute value, record itself.
 	    JavaPairRDD<Double, IrisRecord> mapToPair = data.mapToPair(new PairFunction<IrisRecord, Double, IrisRecord>() {
-			
 			public Tuple2<Double, IrisRecord> call(IrisRecord t) throws Exception {
 				return new Tuple2<Double, IrisRecord>(t.getSepalLength(), t);
 			}
@@ -79,7 +71,6 @@ public class MainTesting implements Serializable {
 	    //Now lets create a Blockie which contains value and all its records which have that value. We need this for computing
 	    // Chisquare.
 	    JavaPairRDD<Double, Blockie> blocks = groupByKey.mapValues(new Function<Iterable<IrisRecord>, Blockie>() {
-
 			public Blockie call(Iterable<IrisRecord> v1) throws Exception {
 				List<IrisRecord> records = Lists.newArrayList(v1);
 				records.get(0).getSepalLength();
@@ -113,7 +104,7 @@ public class MainTesting implements Serializable {
 			}
 		}, false);
 	    
-	    // We have not yet partioned the data. We have just assigned each blockie to a partition number in the previous step.
+	    // We have not yet partitioned the data. We have just assigned each blockie to a partition number in the previous step.
 	    // The below step creates the partitions based on the partition number we assigned previously.
 	    JavaPairRDD<Integer, Tuple2<Double, Blockie>> mappedPartitions = mapPartitionsWithIndex
 	    		.mapToPair(new PairFunction<Tuple2<Integer,Tuple2<Double, Blockie>>, Integer, Tuple2<Double, Blockie>>() {
@@ -121,9 +112,10 @@ public class MainTesting implements Serializable {
 			public Tuple2<Integer, Tuple2<Double, Blockie>> call(Tuple2<Integer, Tuple2<Double, Blockie>> t) throws Exception {
 				return t;
 			}
-		}).partitionBy(
+		})
+		.partitionBy(
 				new SimplePartitioner(sortedBlocksRdd.partitions().size())
-			);
+		);
 	    
 	    
 	    // now create ChiSqUnit and compute chiSquare.
@@ -137,9 +129,9 @@ public class MainTesting implements Serializable {
 				while(t.hasNext()) {
 					rawList.add(t.next()._2());
 				}
-				// Lets sort the data again. This is because when we the data was added from the previous partition,
+				// Lets sort the data again. This is because when the data was added from the previous partition,
 				// the sorting may have been lost. Since the partition fits into the worker's memory
-				// we don't have to create an RDD to sort the partition data.
+				// we don't have to create a RDD to sort the partition data.
 				Collections.sort(rawList, new Comparator<Tuple2<Double, Blockie>>() {
 
 					public int compare(Tuple2<Double, Blockie> o1, Tuple2<Double, Blockie> o2) {
@@ -178,57 +170,106 @@ public class MainTesting implements Serializable {
 				return blocks;
 			}
 		});
+
 	    
-	    //TODO: Incomplete from here..
 	    // ******* begin loop : combine *******
-	    JavaRDD<Blockie> jk = cm.mapPartitions(new FlatMapFunction<Iterator<Blockie>, Blockie>() {
-
-			public Iterable<Blockie> call(Iterator<Blockie> t) throws Exception {
-				List<Blockie> list = Lists.newArrayList();
-				List<Blockie> mergedList = Lists.newArrayList();
-				while(t.hasNext()) {
-					list.add(t.next());
-				}
-				
-				Collections.sort(list, new Comparator<Blockie>(){
-
-					public int compare(Blockie o1, Blockie o2) {
-						return o1.getFingerPrint().compareTo(o2.getFingerPrint());
-					}
-					
-				});
-				
-				Blockie current = list.get(0);
-				int i = 1;
-				while(i < list.size()) {
-					Blockie next = list.get(i);
-					if(current.contains(next)) {
-						//Nothing.
-					} else if(next.contains(current)) {
-						current = next;
-					} else if(current.overlaps(next)) {
-						current = current.merge(next);
-					} else {
-						mergedList.add(current);
-						current = next;
-					}
-					i++;
-				}
-				
-				if(current  != null) {
-					mergedList.add(current);
-				}
-				
-				return mergedList;
-			}
-		});
+	    long blockCount = 0, previousBlockCount = 0;
+	    JavaRDD<Blockie> jk = null;
+	    JavaRDD<Blockie> sourceRdd = cm;
 	    
-	    printBlockies(jk);
-	    // merge within partition
-	    // re partition the data again and maintain continuity
+	    do {
+			jk = sourceRdd.mapPartitions(new FlatMapFunction<Iterator<Blockie>, Blockie>() {
 
+				public Iterable<Blockie> call(Iterator<Blockie> t) throws Exception {
+					List<Blockie> list = Lists.newArrayList();
+					List<Blockie> mergedList = Lists.newArrayList();
+					while (t.hasNext()) {
+						list.add(t.next());
+					}
+
+					Collections.sort(list, new Comparator<Blockie>() {
+						public int compare(Blockie o1, Blockie o2) {
+							return o1.getFingerPrint().compareTo(o2.getFingerPrint());
+						}
+					});
+
+					Blockie current = list.get(0);
+					int i = 1;
+					while (i < list.size()) {
+						Blockie next = list.get(i);
+						if (current.contains(next)) {
+							// Nothing.
+						} else if (next.contains(current)) {
+							current = next;
+						} else if (current.overlaps(next)) {
+							current = current.merge(next);
+						} else {
+							mergedList.add(current);
+							current = next;
+						}
+						i++;
+					}
+
+					if (current != null) {
+						mergedList.add(current);
+					}
+					return mergedList;
+				}
+			});
+
+			sourceRdd  = jk.distinct();
+			previousBlockCount = blockCount;
+			blockCount = sourceRdd.count();
+			
+			if(previousBlockCount != blockCount) {
+				sourceRdd = sourceRdd.mapToPair(new PairFunction<Blockie, BigDecimal, Blockie>() {
+	
+					public Tuple2<BigDecimal, Blockie> call(Blockie t) throws Exception {
+						return new Tuple2<BigDecimal, Blockie>(t.getFingerPrint(), t);
+					}
+				})
+				.sortByKey(true)
+				.mapPartitionsWithIndex(new Function2<Integer, Iterator<Tuple2<BigDecimal,Blockie>>, Iterator<Tuple2<Integer, Tuple2<BigDecimal, Blockie>>>>() {
+	
+					public Iterator<Tuple2<Integer, Tuple2<BigDecimal, Blockie>>> call(Integer v1,
+							Iterator<Tuple2<BigDecimal, Blockie>> v2) throws Exception {
+						
+						List<Tuple2<Integer, Tuple2<BigDecimal, Blockie>>> list = Lists.newArrayList();
+						while(v2.hasNext()) {
+							Tuple2<BigDecimal,Blockie> next = v2.next();
+							list.add(new Tuple2<Integer, Tuple2<BigDecimal,Blockie>>(v1, next));
+						}
+						if(v1 > 0) {
+							// This step is the one which takes the first element from this
+							// partition and puts it in the previous partition. 
+							// Hence maintaining the data continuity even with partitions.
+							Tuple2<BigDecimal, Blockie> firstRecord = list.get(0)._2();
+							list.add(new Tuple2<Integer, Tuple2<BigDecimal,Blockie>>(v1 - 1, firstRecord));
+						}
+						return list.iterator();
+					}
+				}, false)
+				.mapToPair(new PairFunction<Tuple2<Integer,Tuple2<BigDecimal,Blockie>>, Integer, Tuple2<BigDecimal, Blockie>>() {
+	
+					public Tuple2<Integer, Tuple2<BigDecimal, Blockie>> call(Tuple2<Integer, Tuple2<BigDecimal, Blockie>> t)
+							throws Exception {
+						return t;
+					}
+				})
+				.partitionBy(new SimplePartitioner(sourceRdd.partitions().size()))
+				.values()
+				.map(new Function<Tuple2<BigDecimal,Blockie>, Blockie>() {
+	
+					public Blockie call(Tuple2<BigDecimal, Blockie> v1) throws Exception {
+						return v1._2();
+					}
+				});
+			}
+			
+	    } while(previousBlockCount != blockCount);
 	    
 	    // ******* end loop : combine *******
+	    printBlockies(sourceRdd.distinct());
 	    System.out.println("Time to run: " + (System.currentTimeMillis() - startTime));	    
 	    jsc.stop();
 	    

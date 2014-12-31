@@ -2,6 +2,7 @@ package SparkTesting;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,7 +50,7 @@ public class Blockie implements Serializable {
 		for(Double d: getIds()) {
 			fingerPrint = fingerPrint.add(BigDecimal.valueOf(d));
 		}
-		return fingerPrint.divide(BigDecimal.valueOf(getIds().size()));
+		return fingerPrint.divide(BigDecimal.valueOf(getIds().size()), RoundingMode.HALF_EVEN);
 	}
 	
 	public Blockie merge(Blockie b) {
@@ -69,5 +70,30 @@ public class Blockie implements Serializable {
 			records.addAll(list);
 		}
 		return records;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((map == null) ? 0 : map.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Blockie other = (Blockie) obj;
+		if (map == null) {
+			if (other.map != null)
+				return false;
+		} else if (!map.equals(other.map))
+			return false;
+		return true;
 	}
 }
