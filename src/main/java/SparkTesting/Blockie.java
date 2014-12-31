@@ -3,6 +3,7 @@ package SparkTesting;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -70,6 +71,12 @@ public class Blockie implements Serializable {
 			records.addAll(list);
 		}
 		return records;
+	}
+	
+	public String getRange() {
+		List<Double> keys = Lists.newArrayList(map.keySet());
+		Collections.sort(keys);
+		return "[" + keys.get(0) + " - " + keys.get(keys.size() - 1) + "]";
 	}
 
 	@Override

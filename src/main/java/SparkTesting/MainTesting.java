@@ -78,206 +78,219 @@ public class MainTesting implements Serializable {
 			}
 		});
 	    
-	    // Lets sort the blocks by attribute value.
-	    JavaPairRDD<Double, Blockie> sortedBlocksRdd = blocks.sortByKey(true);
+	    BigDecimal min = BigDecimal.valueOf(Double.MIN_VALUE);
+		BigDecimal threshold = BigDecimal.valueOf(4.605);
+		JavaRDD<Blockie> sourceRdd = null;
 	    
-	    //Map Partitions With index
-	    JavaRDD<Tuple2<Integer, Tuple2<Double, Blockie>>> mapPartitionsWithIndex = sortedBlocksRdd.
-	    		mapPartitionsWithIndex(new Function2<Integer, Iterator<Tuple2<Double, Blockie>>, Iterator<Tuple2<Integer, Tuple2<Double, Blockie>>>>() {
-
-			public Iterator<Tuple2<Integer, Tuple2<Double, Blockie>>> call(Integer v1,
-					Iterator<Tuple2<Double, Blockie>> v2) throws Exception {
-				
-				List<Tuple2<Integer, Tuple2<Double, Blockie>>> list = Lists.newArrayList();
-				while(v2.hasNext()) {
-					Tuple2<Double,Blockie> next = v2.next();
-					list.add(new Tuple2<Integer, Tuple2<Double,Blockie>>(v1, next));
-				}
-				if(v1 > 0) {
-					// This step is the one which takes the first element from this
-					// partition and puts it in the previous partition. 
-					// Hence maintaining the data continuity even with partitions.
-					Tuple2<Double, Blockie> firstRecord = list.get(0)._2();
-					list.add(new Tuple2<Integer, Tuple2<Double,Blockie>>(v1 - 1, firstRecord));
-				}
-				return list.iterator();
-			}
-		}, false);
-	    
-	    // We have not yet partitioned the data. We have just assigned each blockie to a partition number in the previous step.
-	    // The below step creates the partitions based on the partition number we assigned previously.
-	    JavaPairRDD<Integer, Tuple2<Double, Blockie>> mappedPartitions = mapPartitionsWithIndex
-	    		.mapToPair(new PairFunction<Tuple2<Integer,Tuple2<Double, Blockie>>, Integer, Tuple2<Double, Blockie>>() {
-
-			public Tuple2<Integer, Tuple2<Double, Blockie>> call(Tuple2<Integer, Tuple2<Double, Blockie>> t) throws Exception {
-				return t;
-			}
-		})
-		.partitionBy(
-				new SimplePartitioner(sortedBlocksRdd.partitions().size())
-		);
-	    
-	    
-	    // now create ChiSqUnit and compute chiSquare.
-	    JavaRDD<ChisquareUnit> chiSquaredRdd = mappedPartitions.mapPartitions(new FlatMapFunction<Iterator<Tuple2<Integer,Tuple2<Double,Blockie>>>, ChisquareUnit>() {
-
-			public Iterable<ChisquareUnit> call(Iterator<Tuple2<Integer, Tuple2<Double, Blockie>>> t)
-					throws Exception {
-				List<Tuple2<Double, Blockie>> rawList = Lists.newArrayList();
-				List<ChisquareUnit> returnList = Lists.newArrayList();
-				
-				while(t.hasNext()) {
-					rawList.add(t.next()._2());
-				}
-				// Lets sort the data again. This is because when the data was added from the previous partition,
-				// the sorting may have been lost. Since the partition fits into the worker's memory
-				// we don't have to create a RDD to sort the partition data.
-				Collections.sort(rawList, new Comparator<Tuple2<Double, Blockie>>() {
-
-					public int compare(Tuple2<Double, Blockie> o1, Tuple2<Double, Blockie> o2) {
-						return BigDecimal.valueOf(o1._1()).compareTo(BigDecimal.valueOf(o2._1()));
+	    while(min.compareTo(threshold) < 0) {
+	    	
+		    // Lets sort the blocks by attribute value.
+		    JavaPairRDD<Double, Blockie> sortedBlocksRdd = blocks.sortByKey(true);
+		    
+		    //Map Partitions With index
+		    JavaRDD<Tuple2<Integer, Tuple2<Double, Blockie>>> mapPartitionsWithIndex = sortedBlocksRdd.
+		    		mapPartitionsWithIndex(new Function2<Integer, Iterator<Tuple2<Double, Blockie>>, Iterator<Tuple2<Integer, Tuple2<Double, Blockie>>>>() {
+	
+				public Iterator<Tuple2<Integer, Tuple2<Double, Blockie>>> call(Integer v1,
+						Iterator<Tuple2<Double, Blockie>> v2) throws Exception {
+					
+					List<Tuple2<Integer, Tuple2<Double, Blockie>>> list = Lists.newArrayList();
+					while(v2.hasNext()) {
+						Tuple2<Double,Blockie> next = v2.next();
+						list.add(new Tuple2<Integer, Tuple2<Double,Blockie>>(v1, next));
 					}
-				});
-
-				for(int i = 0; i < rawList.size() - 1; i++) {
-					ChisquareUnit unit = new ChisquareUnit(rawList.get(i)._2(), rawList.get(i + 1)._2());
-					// Compute the ChiSquare.
-					unit.computeChiSquare();
-					returnList.add(unit);
-				}
-				return returnList;
-			}
-		});
-	    
-	    // Compute the Global minimum of the Chisquare and then merge the Blocks with the minimum value. 
-	    BigDecimal min = BigDecimal.valueOf(chiSquaredRdd.min(new Sorter()).getChiSquareValue());
-	    final Double minimum = min.doubleValue();
-	    
-
-	    JavaRDD<Blockie> cm = chiSquaredRdd.mapPartitions(new FlatMapFunction<Iterator<ChisquareUnit>, Blockie>() {
-
-			public Iterable<Blockie> call(Iterator<ChisquareUnit> t) throws Exception {
-				List<Blockie> blocks = Lists.newArrayList();
-				while(t.hasNext()) {
-					ChisquareUnit chUnit = t.next();
-					if (BigDecimal.valueOf(chUnit.getChiSquareValue()).compareTo(BigDecimal.valueOf(minimum)) == 0) {
-						blocks.add(chUnit.getBlock1().merge(chUnit.getBlock2()));
-					} else {
-						blocks.add(chUnit.getBlock1());
-						blocks.add(chUnit.getBlock2());
+					if(v1 > 0) {
+						// This step is the one which takes the first element from this
+						// partition and puts it in the previous partition. 
+						// Hence maintaining the data continuity even with partitions.
+						Tuple2<Double, Blockie> firstRecord = list.get(0)._2();
+						list.add(new Tuple2<Integer, Tuple2<Double,Blockie>>(v1 - 1, firstRecord));
 					}
+					return list.iterator();
 				}
-				return blocks;
-			}
-		});
-
-	    
-	    // ******* begin loop : combine *******
-	    long blockCount = 0, previousBlockCount = 0;
-	    JavaRDD<Blockie> jk = null;
-	    JavaRDD<Blockie> sourceRdd = cm;
-	    
-	    do {
-			jk = sourceRdd.mapPartitions(new FlatMapFunction<Iterator<Blockie>, Blockie>() {
-
-				public Iterable<Blockie> call(Iterator<Blockie> t) throws Exception {
-					List<Blockie> list = Lists.newArrayList();
-					List<Blockie> mergedList = Lists.newArrayList();
-					while (t.hasNext()) {
-						list.add(t.next());
+			}, false);
+		    
+		    // We have not yet partitioned the data. We have just assigned each blockie to a partition number in the previous step.
+		    // The below step creates the partitions based on the partition number we assigned previously.
+		    JavaPairRDD<Integer, Tuple2<Double, Blockie>> mappedPartitions = mapPartitionsWithIndex
+		    		.mapToPair(new PairFunction<Tuple2<Integer,Tuple2<Double, Blockie>>, Integer, Tuple2<Double, Blockie>>() {
+	
+				public Tuple2<Integer, Tuple2<Double, Blockie>> call(Tuple2<Integer, Tuple2<Double, Blockie>> t) throws Exception {
+					return t;
+				}
+			})
+			.partitionBy(
+					new SimplePartitioner(sortedBlocksRdd.partitions().size())
+			);
+		    
+		    
+		    // now create ChiSqUnit and compute chiSquare.
+		    JavaRDD<ChisquareUnit> chiSquaredRdd = mappedPartitions.mapPartitions(new FlatMapFunction<Iterator<Tuple2<Integer,Tuple2<Double,Blockie>>>, ChisquareUnit>() {
+	
+				public Iterable<ChisquareUnit> call(Iterator<Tuple2<Integer, Tuple2<Double, Blockie>>> t)
+						throws Exception {
+					List<Tuple2<Double, Blockie>> rawList = Lists.newArrayList();
+					List<ChisquareUnit> returnList = Lists.newArrayList();
+					
+					while(t.hasNext()) {
+						rawList.add(t.next()._2());
 					}
-
-					Collections.sort(list, new Comparator<Blockie>() {
-						public int compare(Blockie o1, Blockie o2) {
-							return o1.getFingerPrint().compareTo(o2.getFingerPrint());
+					// Lets sort the data again. This is because when the data was added from the previous partition,
+					// the sorting may have been lost. Since the partition fits into the worker's memory
+					// we don't have to create a RDD to sort the partition data.
+					Collections.sort(rawList, new Comparator<Tuple2<Double, Blockie>>() {
+	
+						public int compare(Tuple2<Double, Blockie> o1, Tuple2<Double, Blockie> o2) {
+							return BigDecimal.valueOf(o1._1()).compareTo(BigDecimal.valueOf(o2._1()));
 						}
 					});
-
-					Blockie current = list.get(0);
-					int i = 1;
-					while (i < list.size()) {
-						Blockie next = list.get(i);
-						if (current.contains(next)) {
-							// Nothing.
-						} else if (next.contains(current)) {
-							current = next;
-						} else if (current.overlaps(next)) {
-							current = current.merge(next);
-						} else {
-							mergedList.add(current);
-							current = next;
-						}
-						i++;
+	
+					for(int i = 0; i < rawList.size() - 1; i++) {
+						ChisquareUnit unit = new ChisquareUnit(rawList.get(i)._2(), rawList.get(i + 1)._2());
+						// Compute the ChiSquare.
+						unit.computeChiSquare();
+						returnList.add(unit);
 					}
-
-					if (current != null) {
-						mergedList.add(current);
-					}
-					return mergedList;
+					return returnList;
 				}
 			});
-
-			sourceRdd  = jk.distinct();
-			previousBlockCount = blockCount;
-			blockCount = sourceRdd.count();
-			
-			if(previousBlockCount != blockCount) {
-				sourceRdd = sourceRdd.mapToPair(new PairFunction<Blockie, BigDecimal, Blockie>() {
+		    
+		    // Compute the Global minimum of the Chisquare and then merge the Blocks with the minimum value. 
+		    min = BigDecimal.valueOf(chiSquaredRdd.min(new Sorter()).getChiSquareValue());
+		    final Double minimum = min.doubleValue();
+		    
+		    JavaRDD<Blockie> cm = chiSquaredRdd.mapPartitions(new FlatMapFunction<Iterator<ChisquareUnit>, Blockie>() {
 	
-					public Tuple2<BigDecimal, Blockie> call(Blockie t) throws Exception {
-						return new Tuple2<BigDecimal, Blockie>(t.getFingerPrint(), t);
-					}
-				})
-				.sortByKey(true)
-				.mapPartitionsWithIndex(new Function2<Integer, Iterator<Tuple2<BigDecimal,Blockie>>, Iterator<Tuple2<Integer, Tuple2<BigDecimal, Blockie>>>>() {
-	
-					public Iterator<Tuple2<Integer, Tuple2<BigDecimal, Blockie>>> call(Integer v1,
-							Iterator<Tuple2<BigDecimal, Blockie>> v2) throws Exception {
-						
-						List<Tuple2<Integer, Tuple2<BigDecimal, Blockie>>> list = Lists.newArrayList();
-						while(v2.hasNext()) {
-							Tuple2<BigDecimal,Blockie> next = v2.next();
-							list.add(new Tuple2<Integer, Tuple2<BigDecimal,Blockie>>(v1, next));
+				public Iterable<Blockie> call(Iterator<ChisquareUnit> t) throws Exception {
+					List<Blockie> blocks = Lists.newArrayList();
+					while(t.hasNext()) {
+						ChisquareUnit chUnit = t.next();
+						if (BigDecimal.valueOf(chUnit.getChiSquareValue()).compareTo(BigDecimal.valueOf(minimum)) == 0) {
+							blocks.add(chUnit.getBlock1().merge(chUnit.getBlock2()));
+						} else {
+							blocks.add(chUnit.getBlock1());
+							blocks.add(chUnit.getBlock2());
 						}
-						if(v1 > 0) {
-							// This step is the one which takes the first element from this
-							// partition and puts it in the previous partition. 
-							// Hence maintaining the data continuity even with partitions.
-							Tuple2<BigDecimal, Blockie> firstRecord = list.get(0)._2();
-							list.add(new Tuple2<Integer, Tuple2<BigDecimal,Blockie>>(v1 - 1, firstRecord));
+					}
+					return blocks;
+				}
+			});
+	
+		    
+		    // ******* begin loop : combine *******
+		    long blockCount = 0, previousBlockCount = 0;
+		    JavaRDD<Blockie> jk = null;
+		    sourceRdd = cm;
+		    
+		    do {
+				jk = sourceRdd.mapPartitions(new FlatMapFunction<Iterator<Blockie>, Blockie>() {
+	
+					public Iterable<Blockie> call(Iterator<Blockie> t) throws Exception {
+						List<Blockie> list = Lists.newArrayList();
+						List<Blockie> mergedList = Lists.newArrayList();
+						while (t.hasNext()) {
+							list.add(t.next());
 						}
-						return list.iterator();
-					}
-				}, false)
-				.mapToPair(new PairFunction<Tuple2<Integer,Tuple2<BigDecimal,Blockie>>, Integer, Tuple2<BigDecimal, Blockie>>() {
 	
-					public Tuple2<Integer, Tuple2<BigDecimal, Blockie>> call(Tuple2<Integer, Tuple2<BigDecimal, Blockie>> t)
-							throws Exception {
-						return t;
-					}
-				})
-				.partitionBy(new SimplePartitioner(sourceRdd.partitions().size()))
-				.values()
-				.map(new Function<Tuple2<BigDecimal,Blockie>, Blockie>() {
+						Collections.sort(list, new Comparator<Blockie>() {
+							public int compare(Blockie o1, Blockie o2) {
+								return o1.getFingerPrint().compareTo(o2.getFingerPrint());
+							}
+						});
 	
-					public Blockie call(Tuple2<BigDecimal, Blockie> v1) throws Exception {
-						return v1._2();
+						Blockie current = list.get(0);
+						int i = 1;
+						while (i < list.size()) {
+							Blockie next = list.get(i);
+							if (current.contains(next)) {
+								// Nothing.
+							} else if (next.contains(current)) {
+								current = next;
+							} else if (current.overlaps(next)) {
+								current = current.merge(next);
+							} else {
+								mergedList.add(current);
+								current = next;
+							}
+							i++;
+						}
+	
+						if (current != null) {
+							mergedList.add(current);
+						}
+						return mergedList;
 					}
 				});
-			}
-			
-	    } while(previousBlockCount != blockCount);
+	
+				sourceRdd  = jk.distinct();
+				previousBlockCount = blockCount;
+				blockCount = sourceRdd.count();
+				
+				if(previousBlockCount != blockCount) {
+					sourceRdd = sourceRdd.mapToPair(new PairFunction<Blockie, BigDecimal, Blockie>() {
+		
+						public Tuple2<BigDecimal, Blockie> call(Blockie t) throws Exception {
+							return new Tuple2<BigDecimal, Blockie>(t.getFingerPrint(), t);
+						}
+					})
+					.sortByKey(true)
+					.mapPartitionsWithIndex(new Function2<Integer, Iterator<Tuple2<BigDecimal,Blockie>>, Iterator<Tuple2<Integer, Tuple2<BigDecimal, Blockie>>>>() {
+		
+						public Iterator<Tuple2<Integer, Tuple2<BigDecimal, Blockie>>> call(Integer v1,
+								Iterator<Tuple2<BigDecimal, Blockie>> v2) throws Exception {
+							
+							List<Tuple2<Integer, Tuple2<BigDecimal, Blockie>>> list = Lists.newArrayList();
+							while(v2.hasNext()) {
+								Tuple2<BigDecimal,Blockie> next = v2.next();
+								list.add(new Tuple2<Integer, Tuple2<BigDecimal,Blockie>>(v1, next));
+							}
+							if(v1 > 0) {
+								// This step is the one which takes the first element from this
+								// partition and puts it in the previous partition. 
+								// Hence maintaining the data continuity even with partitions.
+								Tuple2<BigDecimal, Blockie> firstRecord = list.get(0)._2();
+								list.add(new Tuple2<Integer, Tuple2<BigDecimal,Blockie>>(v1 - 1, firstRecord));
+							}
+							return list.iterator();
+						}
+					}, false)
+					.mapToPair(new PairFunction<Tuple2<Integer,Tuple2<BigDecimal,Blockie>>, Integer, Tuple2<BigDecimal, Blockie>>() {
+		
+						public Tuple2<Integer, Tuple2<BigDecimal, Blockie>> call(Tuple2<Integer, Tuple2<BigDecimal, Blockie>> t)
+								throws Exception {
+							return t;
+						}
+					})
+					.partitionBy(new SimplePartitioner(sourceRdd.partitions().size()))
+					.values()
+					.map(new Function<Tuple2<BigDecimal,Blockie>, Blockie>() {
+		
+						public Blockie call(Tuple2<BigDecimal, Blockie> v1) throws Exception {
+							return v1._2();
+						}
+					});
+				}
+				
+		    } while(previousBlockCount != blockCount);
+		    
+		    blocks = sourceRdd.mapToPair(new PairFunction<Blockie, Double, Blockie>() {
+
+				public Tuple2<Double, Blockie> call(Blockie t) throws Exception {
+					return new Tuple2<Double, Blockie>(t.getFingerPrint().doubleValue(), t);
+				}
+			});
+		    
+	    } // end of big while (Threshold value)
 	    
-	    // ******* end loop : combine *******
-	    printBlockies(sourceRdd.distinct());
+	    printBlockRanges(sourceRdd);
 	    System.out.println("Time to run: " + (System.currentTimeMillis() - startTime));	    
 	    jsc.stop();
 	    
 	}
 	
-	public static void printBlockies(JavaRDD<Blockie> bh) {
+	public static void printBlockRanges(JavaRDD<Blockie> bh) {
 		for (Blockie b : bh.collect()) {
-			System.out.println(b.getIds());
+			System.out.println(b.getRange());
 		}
 	}
 	
