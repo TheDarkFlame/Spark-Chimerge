@@ -232,17 +232,6 @@ public class MainTesting implements Serializable {
 				
 				if(previousBlockCount != blockCount) {
 					
-					//TODO:
-					sourceRdd.mapPartitionsWithIndex(new Function2<Integer, Iterator<Blockie>, Iterator<Blockie>>() {
-
-						public Iterator<Blockie> call(Integer v1, Iterator<Blockie> v2) throws Exception {
-							while(v2.hasNext()){
-								System.out.println(v1 + " " + v2.next().getIds());
-							}
-							return v2;
-						}
-					}, true).collect();
-					//TODO:
 					sourceRdd = sourceRdd.mapToPair(new PairFunction<Blockie, BigDecimal, Blockie>() {
 		
 						public Tuple2<BigDecimal, Blockie> call(Blockie t) throws Exception {
@@ -259,6 +248,7 @@ public class MainTesting implements Serializable {
 							while(v2.hasNext()) {
 								Tuple2<BigDecimal,Blockie> next = v2.next();
 								list.add(new Tuple2<Integer, Tuple2<BigDecimal,Blockie>>(v1, next));
+								System.out.println("Adding " + next._2().getIds() + " to " + v1);
 							}
 							if(v1 > 0) {
 								// This step is the one which takes the first element from this
@@ -266,7 +256,9 @@ public class MainTesting implements Serializable {
 								// Hence maintaining the data continuity even with partitions.
 								Tuple2<BigDecimal, Blockie> firstRecord = list.get(0)._2();
 								list.add(new Tuple2<Integer, Tuple2<BigDecimal,Blockie>>(v1 - 1, firstRecord));
-								list.remove(0);
+								System.out.println("Adding " + firstRecord._2().getIds() + " to " + (v1 - 1));
+								System.out.println("removing " + firstRecord._2().getIds() + " from " + v1);
+								list.remove(new Tuple2<Integer, Tuple2<BigDecimal,Blockie>>(v1, firstRecord));
 							}
 							return list.iterator();
 						}
