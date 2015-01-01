@@ -17,6 +17,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.api.java.function.PairFunction;
 
 import scala.Tuple2;
@@ -184,16 +185,22 @@ public class MainTesting implements Serializable {
 		    
 		    // ******* begin loop : Combine *******
 		    sourceRdd = cm;
-		    int i = 0; 
+		    int i = 0;
+		    
 		    do {
 		    	i++;
-				sourceRdd = sourceRdd.mapPartitions(new FlatMapFunction<Iterator<Blockie>, Blockie>() {
+		    	sourceRdd = sourceRdd.mapPartitions(new FlatMapFunction<Iterator<Blockie>, Blockie>() {
 	
 					public Iterable<Blockie> call(Iterator<Blockie> t) throws Exception {
 						List<Blockie> list = Lists.newArrayList();
 						List<Blockie> mergedList = Lists.newArrayList();
+						
 						while (t.hasNext()) {
 							list.add(t.next());
+						}
+						
+						if(list.isEmpty()) {
+							return mergedList;
 						}
 	
 						Collections.sort(list, new Comparator<Blockie>() {
@@ -201,7 +208,7 @@ public class MainTesting implements Serializable {
 								return o1.getFingerPrint().compareTo(o2.getFingerPrint());
 							}
 						});
-	
+						
 						Blockie current = list.get(0);
 						int i = 1;
 						while (i < list.size()) {
@@ -224,14 +231,17 @@ public class MainTesting implements Serializable {
 						return mergedList;
 					}
 				});
-				
-				sourceRdd = sourceRdd.mapToPair(new PairFunction<Blockie, BigDecimal, Blockie>() {
-	
-					public Tuple2<BigDecimal, Blockie> call(Blockie t) throws Exception {
-						return new Tuple2<BigDecimal, Blockie>(t.getFingerPrint(), t);
+		    	printBlocks(sourceRdd);
+		    	sourceRdd = sourceRdd.mapPartitionsToPair(new PairFlatMapFunction<Iterator<Blockie>, BigDecimal, Blockie>() {
+					public Iterable<Tuple2<BigDecimal, Blockie>> call(Iterator<Blockie> t) throws Exception {
+						List<Tuple2<BigDecimal, Blockie>> list = Lists.newArrayList();
+						while(t.hasNext()) {
+							Blockie b = t.next();
+							list.add(new Tuple2<BigDecimal, Blockie>(b.getFingerPrint(), b));
+						}
+						return list;
 					}
 				})
-				.sortByKey(true)
 				.mapPartitionsWithIndex(new Function2<Integer, Iterator<Tuple2<BigDecimal,Blockie>>, Iterator<Tuple2<Integer, Tuple2<BigDecimal, Blockie>>>>() {
 	
 					public Iterator<Tuple2<Integer, Tuple2<BigDecimal, Blockie>>> call(Integer v1,
@@ -242,7 +252,7 @@ public class MainTesting implements Serializable {
 							Tuple2<BigDecimal,Blockie> next = v2.next();
 							list.add(new Tuple2<Integer, Tuple2<BigDecimal,Blockie>>(v1, next));
 						}
-						if(v1 > 0) {
+						if(! list.isEmpty() && v1 > 0) {
 							// This step is the one which takes the first element from this
 							// partition and puts it in the previous partition. 
 							// Hence maintaining the data continuity even with partitions.
@@ -254,7 +264,7 @@ public class MainTesting implements Serializable {
 						}
 						return list.iterator();
 					}
-				}, false)
+				}, true)
 				.mapToPair(new PairFunction<Tuple2<Integer,Tuple2<BigDecimal,Blockie>>, Integer, Tuple2<BigDecimal, Blockie>>() {
 	
 					public Tuple2<Integer, Tuple2<BigDecimal, Blockie>> call(Tuple2<Integer, Tuple2<BigDecimal, Blockie>> t)
@@ -271,8 +281,8 @@ public class MainTesting implements Serializable {
 					}
 				});
 				
-				System.out.println(i);
 				printBlocks(sourceRdd);
+				System.out.println(i);
 				
 		    } while(i < sourceRdd.partitions().size());
 		    
