@@ -50,7 +50,7 @@ public class MainTesting implements Serializable {
 	    
 	    long startTime = System.currentTimeMillis();
 	    // Read the data from the file.
-	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", 4);
+	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", 3);
 	    
 	    //Step: Map raw line read from file to a IrisRecord.
 	    JavaRDD<IrisRecord> data = stringRdd.map(new Function<String, IrisRecord>() {
@@ -105,13 +105,12 @@ public class MainTesting implements Serializable {
 						Tuple2<Double,Blockie> next = v2.next();
 						list.add(new Tuple2<Integer, Tuple2<Double,Blockie>>(v1, next));
 					}
-					if(v1 > 0) {
+					if(!list.isEmpty() && v1 > 0) {
 						// This step is the one which takes the first element from this
 						// partition and puts it in the previous partition. 
 						// Hence maintaining the data continuity even with partitions.
 						Tuple2<Double, Blockie> firstRecord = list.get(0)._2();
 						list.add(new Tuple2<Integer, Tuple2<Double,Blockie>>(v1 - 1, firstRecord));
-						System.out.println("adding " + firstRecord._2().getIds() + " to " + (v1-1));
 					}
 					return list.iterator();
 				}
@@ -163,8 +162,6 @@ public class MainTesting implements Serializable {
 		    // Compute the Global minimum of the Chisquare and then merge the Blocks with the minimum value. 
 		    min = BigDecimal.valueOf(chiSquaredRdd.min(new Sorter()).getChiSquareValue());
 		    final Double minimum = min.doubleValue();
-		    
-		    System.out.println("Min " + min);
 		    
 		    JavaRDD<Blockie> cm = chiSquaredRdd.mapPartitions(new FlatMapFunction<Iterator<ChisquareUnit>, Blockie>() {
 	
@@ -231,7 +228,6 @@ public class MainTesting implements Serializable {
 						return mergedList;
 					}
 				});
-		    	printBlocks(sourceRdd);
 		    	sourceRdd = sourceRdd.mapPartitionsToPair(new PairFlatMapFunction<Iterator<Blockie>, BigDecimal, Blockie>() {
 					public Iterable<Tuple2<BigDecimal, Blockie>> call(Iterator<Blockie> t) throws Exception {
 						List<Tuple2<BigDecimal, Blockie>> list = Lists.newArrayList();
@@ -258,9 +254,7 @@ public class MainTesting implements Serializable {
 							// Hence maintaining the data continuity even with partitions.
 							Tuple2<BigDecimal, Blockie> firstRecord = list.get(0)._2();
 							list.add(new Tuple2<Integer, Tuple2<BigDecimal,Blockie>>(v1 - 1, firstRecord));
-							System.out.println("Adding " + firstRecord._2().getIds() + " to " + (v1-1));
 							while(list.remove(new Tuple2<Integer, Tuple2<BigDecimal,Blockie>>(v1, firstRecord)));
-							System.out.println("Removing " + firstRecord._2().getIds() + " from " + (v1));
 						}
 						return list.iterator();
 					}
@@ -281,9 +275,6 @@ public class MainTesting implements Serializable {
 					}
 				});
 				
-				printBlocks(sourceRdd);
-				System.out.println(i);
-				
 		    } while(i < sourceRdd.partitions().size());
 		    
 		    blocks = sourceRdd.mapToPair(new PairFunction<Blockie, Double, Blockie>() {
@@ -293,7 +284,6 @@ public class MainTesting implements Serializable {
 				}
 			});
 		    
-		    System.out.println("Done " + sourceRdd.count());
 		    
 	    } // end of big while (Threshold value)
 
@@ -307,18 +297,6 @@ public class MainTesting implements Serializable {
 		for (Blockie b : bh.collect()) {
 			System.out.println(b.getRange());
 		}
-	}
-	
-	public static void printBlocks(JavaRDD<Blockie> bh) {
-		bh.mapPartitionsWithIndex(new Function2<Integer, Iterator<Blockie>, Iterator<Blockie>>() {
-
-			public Iterator<Blockie> call(Integer v1, Iterator<Blockie> v2) throws Exception {
-				while(v2.hasNext()) {
-					System.out.println(v1 + " " + v2.next().getIds());
-				}
-				return v2;
-			}
-		}, true).collect();
 	}
 	
 	private static class SimplePartitioner extends Partitioner {
