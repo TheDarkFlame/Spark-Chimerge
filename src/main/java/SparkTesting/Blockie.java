@@ -14,7 +14,8 @@ import com.google.common.collect.Sets;
 
 /**
  * 
- * This represents one block of data. 
+ * This represents one block of data.
+ * This will be one unit of data. 
  */
 
 @SuppressWarnings("serial")
