@@ -12,6 +12,11 @@ import com.clearspring.analytics.util.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+/**
+ * 
+ * This represents one block of data. 
+ */
+
 @SuppressWarnings("serial")
 public class Blockie implements Serializable {
 	
