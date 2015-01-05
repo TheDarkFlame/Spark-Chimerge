@@ -19,15 +19,15 @@ import com.google.common.collect.Sets;
  */
 
 @SuppressWarnings("serial")
-public class Blockie implements Serializable {
+public class Block implements Serializable {
 	
 	Map<Double, List<IrisRecord>> map = Maps.newHashMap();
 
-	public Blockie(List<IrisRecord> records, Double id) {
+	public Block(List<IrisRecord> records, Double id) {
 		this.map.put(id, records);
 	}
 
-	private Blockie(Map<Double, List<IrisRecord>> map) {
+	private Block(Map<Double, List<IrisRecord>> map) {
 		this.map = map;
 	}
 	
@@ -44,7 +44,7 @@ public class Blockie implements Serializable {
 		return "Blockie [values = " + getIds() + "]";
 	}
 
-	public boolean contains(Blockie b) {
+	public boolean contains(Block b) {
 		return this.map.keySet().containsAll(b.getMap().keySet());
 	}
 
@@ -60,14 +60,14 @@ public class Blockie implements Serializable {
 		return fingerPrint.divide(BigDecimal.valueOf(getIds().size()), RoundingMode.HALF_EVEN);
 	}
 	
-	public Blockie merge(Blockie b) {
+	public Block merge(Block b) {
 		Map<Double, List<IrisRecord>> map = Maps.newHashMap();
 		map.putAll(this.map);
 		map.putAll(b.getMap());
-		return new Blockie(map);
+		return new Block(map);
 	}
 	
-	public boolean overlaps(Blockie b) {
+	public boolean overlaps(Block b) {
 		return !Sets.intersection(this.getIds(), b.getIds()).isEmpty();
 	}
 	
@@ -101,7 +101,7 @@ public class Blockie implements Serializable {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		Blockie other = (Blockie) obj;
+		Block other = (Block) obj;
 		if (map == null) {
 			if (other.map != null)
 				return false;

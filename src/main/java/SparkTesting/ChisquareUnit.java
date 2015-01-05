@@ -21,13 +21,13 @@ public class ChisquareUnit implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
-	private Blockie block1;
+	private Block block1;
 
-	private Blockie block2;
+	private Block block2;
 
 	private Double chiSquareValue;
 
-	public ChisquareUnit(Blockie block1, Blockie block2) {
+	public ChisquareUnit(Block block1, Block block2) {
 		this.block1 = block1;
 		this.block2 = block2;
 		
@@ -41,15 +41,15 @@ public class ChisquareUnit implements Serializable {
 		return chiSquareValue;
 	}
 
-	public Blockie getBlock1() {
+	public Block getBlock1() {
 		return block1;
 	}
 
-	public Blockie getBlock2() {
+	public Block getBlock2() {
 		return block2;
 	}
 
-	private Table<String, Double, Integer> computeSingleRowMatrix(Blockie block) {
+	private Table<String, Double, Integer> computeSingleRowMatrix(Block block) {
 		List<IrisRecord> records = block.getAllRecords();
 		Set<Double> uniqueClassLabel = Sets.newHashSet();
 		for(IrisRecord i: records){
