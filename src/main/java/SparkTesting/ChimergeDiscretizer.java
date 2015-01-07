@@ -62,7 +62,7 @@ public class ChimergeDiscretizer implements Serializable {
 	    // Create a JavaPairRDD with attribute value, record itself.
 	    JavaPairRDD<Double, AttributeLabelPair> mapToPair = data.mapToPair(new PairFunction<AttributeLabelPair, Double, AttributeLabelPair>() {
 			public Tuple2<Double, AttributeLabelPair> call(AttributeLabelPair t) throws Exception {
-				return new Tuple2<Double, AttributeLabelPair>(t.getSepalLength(), t);
+				return new Tuple2<Double, AttributeLabelPair>(t.getAttributeValue(), t);
 			}
 		});
 	    
@@ -74,8 +74,8 @@ public class ChimergeDiscretizer implements Serializable {
 	    JavaPairRDD<Double, Block> blocks = groupByKey.mapValues(new Function<Iterable<AttributeLabelPair>, Block>() {
 			public Block call(Iterable<AttributeLabelPair> v1) throws Exception {
 				List<AttributeLabelPair> records = Lists.newArrayList(v1);
-				records.get(0).getSepalLength();
-				return new Block(records, records.get(0).getSepalLength());
+				records.get(0).getAttributeValue();
+				return new Block(records, records.get(0).getAttributeValue());
 			}
 		});
 	    

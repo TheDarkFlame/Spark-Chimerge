@@ -5,64 +5,45 @@ import java.util.Map;
 
 import com.google.common.collect.Maps;
 
+@SuppressWarnings("serial")
 public class AttributeLabelPair implements Serializable {
 	
-	private static Map<String, Double> irisMap = Maps.newHashMap();
-	
-	private static final long serialVersionUID = 1L;
+	private static Map<String, Double> classLabelMap = Maps.newHashMap();
 	
 	static {
-		irisMap.put("Iris-virginica", 3.0);
-		irisMap.put("Iris-versicolor", 2.0);
-		irisMap.put("Iris-setosa", 1.0);
+		classLabelMap.put("Iris-virginica", 3.0);
+		classLabelMap.put("Iris-versicolor", 2.0);
+		classLabelMap.put("Iris-setosa", 1.0);
 	}
 	
-	private Double petalLength;
-	private Double petalWidth;
-	private Double sepalLength;
-	private Double sepalWidth;
-	private Double species;
+	private Double attributeValue;
+	private Double classLabel;
 	
 	public AttributeLabelPair(String data) {
 		String[] parts = data.split(",");
-		this.petalLength = Double.valueOf(parts[2]);
-		this.petalWidth = Double.valueOf(parts[3]);
-		this.sepalLength = Double.valueOf(parts[0]);
-		this.sepalWidth = Double.valueOf(parts[1]);
-		this.species = irisMap.get(parts[4]);
+		this.attributeValue = Double.valueOf(parts[0]);
+		this.classLabel = classLabelMap.get(parts[4]);
 	}
 
-	public Double getPetalLength() {
-		return petalLength;
+	public Double getAttributeValue() {
+		return attributeValue;
 	}
 
-	public Double getPetalWidth() {
-		return petalWidth;
-	}
-
-	public Double getSepalLength() {
-		return sepalLength;
-	}
-
-	public Double getSepalWidth() {
-		return sepalWidth;
-	}
-
-	public Double getSpecies() {
-		return species;
+	public Double getClassLabel() {
+		return classLabel;
 	}
 
 	@Override
 	public String toString() {
-		return sepalLength.toString();
+		return attributeValue.toString();
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((sepalLength == null) ? 0 : sepalLength.hashCode());
-		result = prime * result + ((species == null) ? 0 : species.hashCode());
+		result = prime * result + ((attributeValue == null) ? 0 : attributeValue.hashCode());
+		result = prime * result + ((classLabel == null) ? 0 : classLabel.hashCode());
 		return result;
 	}
 
@@ -75,15 +56,15 @@ public class AttributeLabelPair implements Serializable {
 		if (getClass() != obj.getClass())
 			return false;
 		AttributeLabelPair other = (AttributeLabelPair) obj;
-		if (sepalLength == null) {
-			if (other.sepalLength != null)
+		if (attributeValue == null) {
+			if (other.attributeValue != null)
 				return false;
-		} else if (!sepalLength.equals(other.sepalLength))
+		} else if (!attributeValue.equals(other.attributeValue))
 			return false;
-		if (species == null) {
-			if (other.species != null)
+		if (classLabel == null) {
+			if (other.classLabel != null)
 				return false;
-		} else if (!species.equals(other.species))
+		} else if (!classLabel.equals(other.classLabel))
 			return false;
 		return true;
 	}

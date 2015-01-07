@@ -53,7 +53,7 @@ public class ChisquareUnit implements Serializable {
 		List<AttributeLabelPair> records = block.getAllRecords();
 		Set<Double> uniqueClassLabel = Sets.newHashSet();
 		for(AttributeLabelPair i: records){
-			uniqueClassLabel.add(i.getSpecies());
+			uniqueClassLabel.add(i.getClassLabel());
 		}
 		
 		Table<String, Double, Integer> table = HashBasedTable.create();
@@ -62,8 +62,8 @@ public class ChisquareUnit implements Serializable {
 		}
 		
 		for (AttributeLabelPair iris : records) {
-			int count = table.get("Row", iris.getSpecies());
-			table.put("Row", iris.getSpecies(), ++count);
+			int count = table.get("Row", iris.getClassLabel());
+			table.put("Row", iris.getClassLabel(), ++count);
 		}
 		
 		return table;
