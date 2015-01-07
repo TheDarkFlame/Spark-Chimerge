@@ -5,7 +5,7 @@ import java.util.Map;
 
 import com.google.common.collect.Maps;
 
-public class IrisRecord implements Serializable {
+public class AttributeLabelPair implements Serializable {
 	
 	private static Map<String, Double> irisMap = Maps.newHashMap();
 	
@@ -23,7 +23,7 @@ public class IrisRecord implements Serializable {
 	private Double sepalWidth;
 	private Double species;
 	
-	public IrisRecord(String data) {
+	public AttributeLabelPair(String data) {
 		String[] parts = data.split(",");
 		this.petalLength = Double.valueOf(parts[2]);
 		this.petalWidth = Double.valueOf(parts[3]);
@@ -74,7 +74,7 @@ public class IrisRecord implements Serializable {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		IrisRecord other = (IrisRecord) obj;
+		AttributeLabelPair other = (AttributeLabelPair) obj;
 		if (sepalLength == null) {
 			if (other.sepalLength != null)
 				return false;

@@ -21,17 +21,17 @@ import com.google.common.collect.Sets;
 @SuppressWarnings("serial")
 public class Block implements Serializable {
 	
-	Map<Double, List<IrisRecord>> map = Maps.newHashMap();
+	Map<Double, List<AttributeLabelPair>> map = Maps.newHashMap();
 
-	public Block(List<IrisRecord> records, Double id) {
+	public Block(List<AttributeLabelPair> records, Double id) {
 		this.map.put(id, records);
 	}
 
-	private Block(Map<Double, List<IrisRecord>> map) {
+	private Block(Map<Double, List<AttributeLabelPair>> map) {
 		this.map = map;
 	}
 	
-	public List<IrisRecord> getRecordsForId(Double id) {
+	public List<AttributeLabelPair> getRecordsForId(Double id) {
 		return map.get(id);
 	}
 
@@ -48,7 +48,7 @@ public class Block implements Serializable {
 		return this.map.keySet().containsAll(b.getMap().keySet());
 	}
 
-	public Map<Double, List<IrisRecord>> getMap() {
+	public Map<Double, List<AttributeLabelPair>> getMap() {
 		return map;
 	}
 	
@@ -61,7 +61,7 @@ public class Block implements Serializable {
 	}
 	
 	public Block merge(Block b) {
-		Map<Double, List<IrisRecord>> map = Maps.newHashMap();
+		Map<Double, List<AttributeLabelPair>> map = Maps.newHashMap();
 		map.putAll(this.map);
 		map.putAll(b.getMap());
 		return new Block(map);
@@ -71,9 +71,9 @@ public class Block implements Serializable {
 		return !Sets.intersection(this.getIds(), b.getIds()).isEmpty();
 	}
 	
-	public List<IrisRecord> getAllRecords() {
-		List<IrisRecord> records = Lists.newArrayList();
-		for(List<IrisRecord> list: map.values()){
+	public List<AttributeLabelPair> getAllRecords() {
+		List<AttributeLabelPair> records = Lists.newArrayList();
+		for(List<AttributeLabelPair> list: map.values()){
 			records.addAll(list);
 		}
 		return records;

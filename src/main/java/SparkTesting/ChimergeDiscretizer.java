@@ -53,27 +53,27 @@ public class ChimergeDiscretizer implements Serializable {
 	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", 3);
 	    
 	    //Step: Map raw line read from file to a IrisRecord.
-	    JavaRDD<IrisRecord> data = stringRdd.map(new Function<String, IrisRecord>() {
-			public IrisRecord call(String v1) throws Exception {
-				return new IrisRecord(v1);
+	    JavaRDD<AttributeLabelPair> data = stringRdd.map(new Function<String, AttributeLabelPair>() {
+			public AttributeLabelPair call(String v1) throws Exception {
+				return new AttributeLabelPair(v1);
 			}
 		});
 	    
 	    // Create a JavaPairRDD with attribute value, record itself.
-	    JavaPairRDD<Double, IrisRecord> mapToPair = data.mapToPair(new PairFunction<IrisRecord, Double, IrisRecord>() {
-			public Tuple2<Double, IrisRecord> call(IrisRecord t) throws Exception {
-				return new Tuple2<Double, IrisRecord>(t.getSepalLength(), t);
+	    JavaPairRDD<Double, AttributeLabelPair> mapToPair = data.mapToPair(new PairFunction<AttributeLabelPair, Double, AttributeLabelPair>() {
+			public Tuple2<Double, AttributeLabelPair> call(AttributeLabelPair t) throws Exception {
+				return new Tuple2<Double, AttributeLabelPair>(t.getSepalLength(), t);
 			}
 		});
 	    
 	    //Group by key to pull all records with same value together.
-	    JavaPairRDD<Double, Iterable<IrisRecord>> groupByKey = mapToPair.groupByKey();
+	    JavaPairRDD<Double, Iterable<AttributeLabelPair>> groupByKey = mapToPair.groupByKey();
 	    
 	    //Now lets create a Blockie which contains value and all its records which have that value. We need this for computing
 	    // Chisquare.
-	    JavaPairRDD<Double, Block> blocks = groupByKey.mapValues(new Function<Iterable<IrisRecord>, Block>() {
-			public Block call(Iterable<IrisRecord> v1) throws Exception {
-				List<IrisRecord> records = Lists.newArrayList(v1);
+	    JavaPairRDD<Double, Block> blocks = groupByKey.mapValues(new Function<Iterable<AttributeLabelPair>, Block>() {
+			public Block call(Iterable<AttributeLabelPair> v1) throws Exception {
+				List<AttributeLabelPair> records = Lists.newArrayList(v1);
 				records.get(0).getSepalLength();
 				return new Block(records, records.get(0).getSepalLength());
 			}

@@ -50,9 +50,9 @@ public class ChisquareUnit implements Serializable {
 	}
 
 	private Table<String, Double, Integer> computeSingleRowMatrix(Block block) {
-		List<IrisRecord> records = block.getAllRecords();
+		List<AttributeLabelPair> records = block.getAllRecords();
 		Set<Double> uniqueClassLabel = Sets.newHashSet();
-		for(IrisRecord i: records){
+		for(AttributeLabelPair i: records){
 			uniqueClassLabel.add(i.getSpecies());
 		}
 		
@@ -61,7 +61,7 @@ public class ChisquareUnit implements Serializable {
 			table.put("Row", d , 0);
 		}
 		
-		for (IrisRecord iris : records) {
+		for (AttributeLabelPair iris : records) {
 			int count = table.get("Row", iris.getSpecies());
 			table.put("Row", iris.getSpecies(), ++count);
 		}
