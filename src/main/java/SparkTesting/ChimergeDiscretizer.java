@@ -21,6 +21,8 @@ import com.google.common.collect.Lists;
 
 
 /**
+ * @author Varsha Herle (vherle@uw.edu)
+ * 
  * Algorithm per column(Attribute, Label Pair) 
  *  1. Unique attribute value
  *  2. Sort by attribute value
@@ -28,7 +30,7 @@ import com.google.common.collect.Lists;
  *  4. combine adjacent blocks and compute ChiSquare
  *  5. Take global minimum.
  *  6. merge ChiSquareUnits
- *  7. Merge adjacent blocks(by partitioning) until they don't further merge. (While loop)
+ *  7. Merge blocks in adjacent partitions until Blocks don't merge further. (While loop)
  *  8. Then back to Step 2:
  *
  */
@@ -101,9 +103,13 @@ public class ChimergeDiscretizer implements Serializable {
 		    JavaRDD<Block> cm = chiSquaredRdd.mapPartitions(new BlockAggregator(min));
 		    
 		    // ******* begin loop : Merging/reducing  *******
+		    // Here the idea is that, we always move the first element from the partition to the previous partition.
+		    // i.e. move the first element from 1st partition to the oth partition. This way we give chance 
+		    // for the elements to merge across partitions.
+		    // the number of iterations  = partitions size. We need to give each partition a fair chance. 
 		    sourceRdd = cm;
-		    int i = 0;
 		    
+		    int i = 0;
 		    do {
 		    	i++;
 		    	sourceRdd = sourceRdd.mapPartitions(new BlockMergeHandler());
@@ -137,6 +143,8 @@ public class ChimergeDiscretizer implements Serializable {
 				
 		    } while(i < sourceRdd.partitions().size());
 		    
+		    // Here now all the Blocks with Chisquare = min have been merged.
+		    // Lets compute ChiSquare until Chisquare is greater than the allowed threshold
 		    blocks = sourceRdd.mapToPair(new PairFunction<Block, BigDecimal, Block>() {
 
 				public Tuple2<BigDecimal, Block> call(Block t) throws Exception {

@@ -32,8 +32,10 @@ public class PartitionDataHandler implements Function2<Integer, Iterator<Tuple2<
 			// This step is the one which takes the first element from this
 			// partition and puts it in the previous partition. 
 			// Hence maintaining the data continuity even with partitions.
+			
 			Tuple2<BigDecimal, Block> firstRecord = list.get(0)._2();
 			list.add(new Tuple2<Integer, Tuple2<BigDecimal,Block>>(v1 - 1, firstRecord));
+			
 			if(moveFirstRecordToPreviousPartition) {
 				while(list.remove(new Tuple2<Integer, Tuple2<BigDecimal,Block>>(v1, firstRecord)));
 			}
