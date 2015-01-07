@@ -16,6 +16,7 @@ public class AttributeLabelPair implements Serializable {
 		classLabelMap.put("Iris-setosa", 1.0);
 	}
 	
+	private String attributeName;
 	private Double attributeValue;
 	private Double classLabel;
 	
@@ -23,6 +24,7 @@ public class AttributeLabelPair implements Serializable {
 		String[] parts = data.split(",");
 		this.attributeValue = Double.valueOf(parts[0]);
 		this.classLabel = classLabelMap.get(parts[4]);
+		this.attributeName = "Sepal Length";
 	}
 
 	public Double getAttributeValue() {
@@ -42,6 +44,7 @@ public class AttributeLabelPair implements Serializable {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
+		result = prime * result + ((attributeName == null) ? 0 : attributeName.hashCode());
 		result = prime * result + ((attributeValue == null) ? 0 : attributeValue.hashCode());
 		result = prime * result + ((classLabel == null) ? 0 : classLabel.hashCode());
 		return result;
@@ -56,6 +59,11 @@ public class AttributeLabelPair implements Serializable {
 		if (getClass() != obj.getClass())
 			return false;
 		AttributeLabelPair other = (AttributeLabelPair) obj;
+		if (attributeName == null) {
+			if (other.attributeName != null)
+				return false;
+		} else if (!attributeName.equals(other.attributeName))
+			return false;
 		if (attributeValue == null) {
 			if (other.attributeValue != null)
 				return false;
@@ -68,4 +76,5 @@ public class AttributeLabelPair implements Serializable {
 			return false;
 		return true;
 	}
+	
 }

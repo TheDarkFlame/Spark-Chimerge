@@ -34,7 +34,13 @@ public class ChisquareUnit implements Serializable {
 	}
 	
 	public void computeChiSquare() {
-		this.chiSquareValue = Statistics.chiSqTest(mergeMatricies(computeSingleRowMatrix(block1), computeSingleRowMatrix(block2))).statistic();
+		this.chiSquareValue = Statistics.
+				chiSqTest(
+						mergeMatricies(
+								computeSingleRowMatrix(block1), 
+								computeSingleRowMatrix(block2)
+								)
+						).statistic();
 	}
 
 	public Double getChiSquareValue() {

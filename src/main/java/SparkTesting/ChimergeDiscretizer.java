@@ -9,7 +9,6 @@ import java.util.List;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.apache.spark.Partitioner;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -52,7 +51,7 @@ public class ChimergeDiscretizer implements Serializable {
 	    // Read the data from the file.
 	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", 3);
 	    
-	    //Step: Map raw line read from file to a IrisRecord.
+	    //Step: Map raw line read from file to a AttributeLabelPair.
 	    JavaRDD<AttributeLabelPair> data = stringRdd.map(new Function<String, AttributeLabelPair>() {
 			public AttributeLabelPair call(String v1) throws Exception {
 				return new AttributeLabelPair(v1);
@@ -69,7 +68,7 @@ public class ChimergeDiscretizer implements Serializable {
 	    //Group by key to pull all records with same value together.
 	    JavaPairRDD<Double, Iterable<AttributeLabelPair>> groupByKey = mapToPair.groupByKey();
 	    
-	    //Now lets create a Blockie which contains value and all its records which have that value. We need this for computing
+	    //Now lets create a block which contains value and all its records which have that value. We need this for computing
 	    // Chisquare.
 	    JavaPairRDD<Double, Block> blocks = groupByKey.mapValues(new Function<Iterable<AttributeLabelPair>, Block>() {
 			public Block call(Iterable<AttributeLabelPair> v1) throws Exception {
@@ -116,7 +115,7 @@ public class ChimergeDiscretizer implements Serializable {
 				}
 			}, false);
 		    
-		    // We have not yet partitioned the data. We have just assigned each blockie to a partition number in the previous step.
+		    // We have not yet partitioned the data. We have just assigned each block to a partition number in the previous step.
 		    // The below step creates the partitions based on the partition number we assigned previously.
 		    JavaPairRDD<Integer, Tuple2<Double, Block>> mappedPartitions = mapPartitionsWithIndex
 		    		.mapToPair(new PairFunction<Tuple2<Integer,Tuple2<Double, Block>>, Integer, Tuple2<Double, Block>>() {
@@ -160,7 +159,7 @@ public class ChimergeDiscretizer implements Serializable {
 			});
 		    
 		    // Compute the Global minimum of the Chisquare and then merge the Blocks with the minimum value. 
-		    min = BigDecimal.valueOf(chiSquaredRdd.min(new Sorter()).getChiSquareValue());
+		    min = BigDecimal.valueOf(chiSquaredRdd.min(new ChiSquareUnitSorter()).getChiSquareValue());
 		    final Double minimum = min.doubleValue();
 		    
 		    JavaRDD<Block> cm = chiSquaredRdd.mapPartitions(new FlatMapFunction<Iterator<ChisquareUnit>, Block>() {
@@ -296,31 +295,6 @@ public class ChimergeDiscretizer implements Serializable {
 	public static void printBlockRanges(JavaRDD<Block> bh) {
 		for (Block b : bh.collect()) {
 			System.out.println(b.getRange());
-		}
-	}
-	
-	private static class SimplePartitioner extends Partitioner {
-
-		private int partitions;
-		
-		public SimplePartitioner(int num) {
-			this.partitions = num;
-		}
-		
-		@Override
-		public int getPartition(Object arg0) {
-			return (Integer) arg0;
-		}
-
-		@Override
-		public int numPartitions() {
-			return this.partitions;
-		}
-	}
-	
-	private static class Sorter implements Comparator<ChisquareUnit>, Serializable {
-		public int compare(ChisquareUnit o1, ChisquareUnit o2) {
-			return BigDecimal.valueOf(o1.getChiSquareValue()).compareTo(BigDecimal.valueOf(o2.getChiSquareValue()));
 		}
 	}
 }
