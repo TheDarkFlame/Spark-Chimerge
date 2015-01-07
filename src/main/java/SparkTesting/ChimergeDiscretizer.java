@@ -2,8 +2,6 @@ package SparkTesting;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -25,14 +23,14 @@ import com.google.common.collect.Lists;
 
 
 /**
- *  
+ * Algorithm per column(Attribute, Label Pair) 
  *  1. Unique attribute value
  *  2. Sort by attribute value
  *  3. partition with redundancy.
  *  4. combine adjacent blocks and compute ChiSquare
  *  5. Take global minimum.
  *  6. merge ChiSquareUnits
- *  7. Merge adjacent blocks(by partitioning) until they don't further merge. 
+ *  7. Merge adjacent blocks(by partitioning) until they don't further merge. (While loop)
  *  8. Then back to Step 2:
  *
  */
@@ -41,13 +39,10 @@ public class ChimergeDiscretizer implements Serializable {
 	
 	public static void main(String[] args) {
 		Logger.getRootLogger().setLevel(Level.OFF);
-	    SparkConf sparkConf = new SparkConf().setAppName("Local");
-	    sparkConf.setMaster("local");
-	    sparkConf.set("spark.executor.memory", "1g");
-	    sparkConf.set("spark.driver.memory", "1g");
-	    JavaSparkContext jsc = new JavaSparkContext(sparkConf);
+	    JavaSparkContext jsc = setupSpark();
 	    
-	    long startTime = System.currentTimeMillis();
+	    long startTime = System.currentTimeMillis(); // For time measurement.
+	    
 	    // Read the data from the file.
 	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", 3);
 	    
@@ -70,50 +65,19 @@ public class ChimergeDiscretizer implements Serializable {
 	    
 	    //Now lets create a block which contains value and all its records which have that value. We need this for computing
 	    // Chisquare.
-	    JavaPairRDD<Double, Block> blocks = groupByKey.mapValues(new Function<Iterable<AttributeLabelPair>, Block>() {
-			public Block call(Iterable<AttributeLabelPair> v1) throws Exception {
-				List<AttributeLabelPair> records = Lists.newArrayList(v1);
-				records.get(0).getAttributeValue();
-				return new Block(records, records.get(0).getAttributeValue());
-			}
-		});
+	    JavaPairRDD<Double, Block> blocks = groupByKey.mapValues(new AttributeBlockCreator());
 	    
 	    BigDecimal min = BigDecimal.valueOf(Double.MIN_VALUE);
-		BigDecimal threshold = BigDecimal.valueOf(4.605);
+		BigDecimal threshold = ChiSqaureTable.getChiSquareValue(2, 0.001d);
 		JavaRDD<Block> sourceRdd = null;
 		while(min.compareTo(threshold) < 0) {
 		
-		/*******************/
-//		int index = 0;
-//		while(index < 1) {
-//	    	index++;
-	    /*******************/
-	    	
 		    // Lets sort the blocks by attribute value.
 		    JavaPairRDD<Double, Block> sortedBlocksRdd = blocks.sortByKey(true);
 		    
 		    //Map Partitions With index
-		    JavaRDD<Tuple2<Integer, Tuple2<Double, Block>>> mapPartitionsWithIndex = sortedBlocksRdd.
-		    		mapPartitionsWithIndex(new Function2<Integer, Iterator<Tuple2<Double, Block>>, Iterator<Tuple2<Integer, Tuple2<Double, Block>>>>() {
-	
-				public Iterator<Tuple2<Integer, Tuple2<Double, Block>>> call(Integer v1,
-						Iterator<Tuple2<Double, Block>> v2) throws Exception {
-					
-					List<Tuple2<Integer, Tuple2<Double, Block>>> list = Lists.newArrayList();
-					while(v2.hasNext()) {
-						Tuple2<Double,Block> next = v2.next();
-						list.add(new Tuple2<Integer, Tuple2<Double,Block>>(v1, next));
-					}
-					if(!list.isEmpty() && v1 > 0) {
-						// This step is the one which takes the first element from this
-						// partition and puts it in the previous partition. 
-						// Hence maintaining the data continuity even with partitions.
-						Tuple2<Double, Block> firstRecord = list.get(0)._2();
-						list.add(new Tuple2<Integer, Tuple2<Double,Block>>(v1 - 1, firstRecord));
-					}
-					return list.iterator();
-				}
-			}, false);
+		    JavaRDD<Tuple2<Integer, Tuple2<Double, Block>>> mapPartitionsWithIndex = 
+		    		sortedBlocksRdd.mapPartitionsWithIndex(new PartitionDataHandler(), false);
 		    
 		    // We have not yet partitioned the data. We have just assigned each block to a partition number in the previous step.
 		    // The below step creates the partitions based on the partition number we assigned previously.
@@ -128,35 +92,7 @@ public class ChimergeDiscretizer implements Serializable {
 			);
 		    
 		    // now create ChiSqUnit and compute chiSquare.
-		    JavaRDD<ChisquareUnit> chiSquaredRdd = mappedPartitions.mapPartitions(new FlatMapFunction<Iterator<Tuple2<Integer,Tuple2<Double,Block>>>, ChisquareUnit>() {
-	
-				public Iterable<ChisquareUnit> call(Iterator<Tuple2<Integer, Tuple2<Double, Block>>> t)
-						throws Exception {
-					List<Tuple2<Double, Block>> rawList = Lists.newArrayList();
-					List<ChisquareUnit> returnList = Lists.newArrayList();
-					
-					while(t.hasNext()) {
-						rawList.add(t.next()._2());
-					}
-					// Lets sort the data again. This is because when the data was added to the previous partition,
-					// the sorted arrangement may have been lost. Since the partition fits into the worker's memory
-					// we don't have to create a RDD to sort the partition data.
-					Collections.sort(rawList, new Comparator<Tuple2<Double, Block>>() {
-	
-						public int compare(Tuple2<Double, Block> o1, Tuple2<Double, Block> o2) {
-							return BigDecimal.valueOf(o1._1()).compareTo(BigDecimal.valueOf(o2._1()));
-						}
-					});
-	
-					for(int i = 0; i < rawList.size() - 1; i++) {
-						ChisquareUnit unit = new ChisquareUnit(rawList.get(i)._2(), rawList.get(i + 1)._2());
-						// Compute the ChiSquare.
-						unit.computeChiSquare();
-						returnList.add(unit);
-					}
-					return returnList;
-				}
-			});
+		    JavaRDD<ChisquareUnit> chiSquaredRdd = mappedPartitions.mapPartitions(new DistributedChiSquareComputer());
 		    
 		    // Compute the Global minimum of the Chisquare and then merge the Blocks with the minimum value. 
 		    min = BigDecimal.valueOf(chiSquaredRdd.min(new ChiSquareUnitSorter()).getChiSquareValue());
@@ -185,48 +121,8 @@ public class ChimergeDiscretizer implements Serializable {
 		    
 		    do {
 		    	i++;
-		    	sourceRdd = sourceRdd.mapPartitions(new FlatMapFunction<Iterator<Block>, Block>() {
-	
-					public Iterable<Block> call(Iterator<Block> t) throws Exception {
-						List<Block> list = Lists.newArrayList();
-						List<Block> mergedList = Lists.newArrayList();
-						
-						while (t.hasNext()) {
-							list.add(t.next());
-						}
-						
-						if(list.isEmpty()) {
-							return mergedList;
-						}
-	
-						Collections.sort(list, new Comparator<Block>() {
-							public int compare(Block o1, Block o2) {
-								return o1.getFingerPrint().compareTo(o2.getFingerPrint());
-							}
-						});
-						
-						Block current = list.get(0);
-						int i = 1;
-						while (i < list.size()) {
-							Block next = list.get(i);
-							if (current.contains(next)) {
-								// Nothing.
-							} else if (next.contains(current)) {
-								current = next;
-							} else if (current.overlaps(next)) {
-								current = current.merge(next);
-							} else {
-								mergedList.add(current);
-								current = next;
-							}
-							i++;
-						}
-						if (current != null) {
-							mergedList.add(current);
-						}
-						return mergedList;
-					}
-				});
+		    	sourceRdd = sourceRdd.mapPartitions(new BlockMergeHandler());
+		    	
 		    	sourceRdd = sourceRdd.mapPartitionsToPair(new PairFlatMapFunction<Iterator<Block>, BigDecimal, Block>() {
 					public Iterable<Tuple2<BigDecimal, Block>> call(Iterator<Block> t) throws Exception {
 						List<Tuple2<BigDecimal, Block>> list = Lists.newArrayList();
@@ -296,5 +192,13 @@ public class ChimergeDiscretizer implements Serializable {
 		for (Block b : bh.collect()) {
 			System.out.println(b.getRange());
 		}
+	}
+	
+	public static JavaSparkContext setupSpark() {
+		SparkConf sparkConf = new SparkConf().setAppName("Local");
+	    sparkConf.setMaster("local");
+	    sparkConf.set("spark.executor.memory", "1g");
+	    sparkConf.set("spark.driver.memory", "1g");
+	    return new JavaSparkContext(sparkConf);
 	}
 }
