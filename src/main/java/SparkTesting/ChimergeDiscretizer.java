@@ -177,8 +177,9 @@ public class ChimergeDiscretizer implements Serializable {
 	}
 	
 	public static JavaSparkContext setupSpark() {
-		SparkConf sparkConf = new SparkConf().setAppName("Local");
-	    sparkConf.setMaster("local");
+		SparkConf sparkConf = new SparkConf().setAppName("Chimerge");
+		sparkConf.setMaster("local");
+	    //sparkConf.setMaster("spark://BELC02MQ17MFD58.sea.corp.expecn.com:7077");
 	    sparkConf.set("spark.executor.memory", "1g");
 	    sparkConf.set("spark.driver.memory", "1g");
 	    return new JavaSparkContext(sparkConf);
