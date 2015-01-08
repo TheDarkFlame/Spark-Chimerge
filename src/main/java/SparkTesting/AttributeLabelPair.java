@@ -1,30 +1,18 @@
 package SparkTesting;
 
 import java.io.Serializable;
-import java.util.Map;
-
-import com.google.common.collect.Maps;
 
 @SuppressWarnings("serial")
 public class AttributeLabelPair implements Serializable {
-	
-	private static Map<String, Double> classLabelMap = Maps.newHashMap();
-	
-	static {
-		classLabelMap.put("Iris-virginica", 3.0);
-		classLabelMap.put("Iris-versicolor", 2.0);
-		classLabelMap.put("Iris-setosa", 1.0);
-	}
 	
 	private String attributeName;
 	private Double attributeValue;
 	private Double classLabel;
 	
-	public AttributeLabelPair(String data) {
-		String[] parts = data.split(",");
-		this.attributeValue = Double.valueOf(parts[0]);
-		this.classLabel = classLabelMap.get(parts[4]);
-		this.attributeName = "Sepal Length";
+	public AttributeLabelPair(Double attribute, Double classLabel, String colName) {
+		this.attributeValue = attribute;
+		this.classLabel = classLabel;
+		this.attributeName = colName;
 	}
 
 	public Double getAttributeValue() {
@@ -35,9 +23,8 @@ public class AttributeLabelPair implements Serializable {
 		return classLabel;
 	}
 
-	@Override
-	public String toString() {
-		return attributeValue.toString();
+	public String getAttributeName() {
+		return attributeName;
 	}
 
 	@Override

@@ -79,12 +79,18 @@ public class Block implements Serializable {
 		return records;
 	}
 	
-	public String getRange() {
+	public Double getMaxRange() {
 		List<Double> keys = Lists.newArrayList(map.keySet());
 		Collections.sort(keys);
-		return "[" + keys.get(0) + " - " + keys.get(keys.size() - 1) + "]";
+		return keys.get(keys.size() - 1);
 	}
-
+	
+	public Double getMinRange() {
+		List<Double> keys = Lists.newArrayList(map.keySet());
+		Collections.sort(keys);
+		return keys.get(0);
+	}
+	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
