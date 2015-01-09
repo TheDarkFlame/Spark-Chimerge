@@ -45,7 +45,7 @@ public class ChimergeDiscretizer implements Serializable {
 	    long startTime = System.currentTimeMillis(); // For time measurement.
 	    
 	    // Read the data from the file.
-	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", 3);
+	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", 4);
 	    
 	    JavaRDD<RawDataLine> rawData = stringRdd.map(new Function<String, RawDataLine>() {
 			private static final long serialVersionUID = 1L;
@@ -151,9 +151,9 @@ public class ChimergeDiscretizer implements Serializable {
 		String[] jars = {"/Users/rmysoreradhakrishna/git-workspace/Spark-Chimerge/build/libs/Spark-Chimerge-1.0.jar"};
 		SparkConf sparkConf = new SparkConf().setAppName("Chimerge");
 		sparkConf.setMaster("local[4]");
-	    sparkConf.setMaster("spark://BELC02MQ17MFD58.sea.corp.expecn.com:7077");
-		sparkConf.setSparkHome("/Users/rmysoreradhakrishna/Downloads/spark-1.1.0-bin-hadoop1/");
-		sparkConf.setJars(jars);
+//	    sparkConf.setMaster("spark://BELC02MQ17MFD58.sea.corp.expecn.com:7077");
+//		sparkConf.setSparkHome("/Users/rmysoreradhakrishna/Downloads/spark-1.1.0-bin-hadoop1/");
+//		sparkConf.setJars(jars);
 	    sparkConf.set("spark.executor.memory", "1g");
 	    sparkConf.set("spark.driver.memory", "1g");
 	    return new JavaSparkContext(sparkConf);
