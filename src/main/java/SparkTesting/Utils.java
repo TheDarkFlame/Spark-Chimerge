@@ -1,11 +1,14 @@
 package SparkTesting;
 
+import java.io.Serializable;
 import java.util.List;
 
 import org.apache.spark.api.java.JavaRDD;
 
-public final class Utils {
+public final class Utils implements Serializable{
 	
+	private static final long serialVersionUID = 1L;
+
 	private Utils() {}
 	
 	public static void printBlockRanges(JavaRDD<Block> bh) {

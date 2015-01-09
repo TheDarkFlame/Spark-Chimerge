@@ -4,9 +4,10 @@ import java.io.Serializable;
 
 import org.apache.spark.api.java.function.Function;
 
-@SuppressWarnings("serial")
 public class RawDataToAttributeConverter implements Serializable, Function<RawDataLine, AttributeLabelPair> {
 	
+	private static final long serialVersionUID = 1L;
+
 	private ClassLabelValueResolver resolver;
 	
 	private int position;

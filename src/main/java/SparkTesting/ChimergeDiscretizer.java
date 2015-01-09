@@ -2,8 +2,6 @@ package SparkTesting;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.Iterator;
-import java.util.List;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -12,12 +10,8 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.PairFlatMapFunction;
-import org.apache.spark.api.java.function.PairFunction;
 
 import scala.Tuple2;
-
-import com.google.common.collect.Lists;
 
 
 /**
@@ -34,9 +28,10 @@ import com.google.common.collect.Lists;
  *  8. Then back to Step 2:
  *
  */
-@SuppressWarnings({ "serial" })
 public class ChimergeDiscretizer implements Serializable {
 	
+	private static final long serialVersionUID = 1L;
+
 	public static void main(String[] args) {
 		Logger.getRootLogger().setLevel(Level.OFF);
 	    JavaSparkContext jsc = setupSpark();
@@ -53,6 +48,8 @@ public class ChimergeDiscretizer implements Serializable {
 	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", 3);
 	    
 	    JavaRDD<RawDataLine> rawData = stringRdd.map(new Function<String, RawDataLine>() {
+			private static final long serialVersionUID = 1L;
+
 			public RawDataLine call(String v1) throws Exception {
 				return new RawDataLine(v1);
 			}
@@ -68,11 +65,7 @@ public class ChimergeDiscretizer implements Serializable {
 		    JavaRDD<AttributeLabelPair> data = rawData.map(new RawDataToAttributeConverter(j, resolver, columns[j]));
 		    
 		    // Create a JavaPairRDD with attribute value, record itself.
-		    JavaPairRDD<BigDecimal, AttributeLabelPair> mapToPair = data.mapToPair(new PairFunction<AttributeLabelPair, BigDecimal, AttributeLabelPair>() {
-				public Tuple2<BigDecimal, AttributeLabelPair> call(AttributeLabelPair t) throws Exception {
-					return new Tuple2<BigDecimal, AttributeLabelPair>(BigDecimal.valueOf(t.getAttributeValue()), t);
-				}
-			});
+		    JavaPairRDD<BigDecimal, AttributeLabelPair> mapToPair = data.mapToPair(new RawDataToAttributePair());
 		    
 		    // Group by key to pull all records with same value together.
 		    JavaPairRDD<BigDecimal, Iterable<AttributeLabelPair>> groupByKey = mapToPair.groupByKey();
@@ -97,11 +90,7 @@ public class ChimergeDiscretizer implements Serializable {
 			    // We have not yet partitioned the data. We have just assigned each block to a partition number in the previous step.
 			    // The below step creates the partitions based on the partition number we assigned previously.
 			    JavaPairRDD<Integer, Tuple2<BigDecimal, Block>> mappedPartitions = mapPartitionsWithIndex
-			    		.mapToPair(new PairFunction<Tuple2<Integer,Tuple2<BigDecimal, Block>>, Integer, Tuple2<BigDecimal, Block>>() {
-					public Tuple2<Integer, Tuple2<BigDecimal, Block>> call(Tuple2<Integer, Tuple2<BigDecimal, Block>> t) throws Exception {
-						return t;
-					}
-				})
+			    		.mapToPair(new TupleToPair())
 				.partitionBy(
 					new SimplePartitioner(sortedBlocksRdd.partitions().size())
 				);
@@ -128,28 +117,15 @@ public class ChimergeDiscretizer implements Serializable {
 			    	i++;
 			    	sourceRdd = sourceRdd.mapPartitions(new BlockMergeHandler());
 			    	
-			    	sourceRdd = sourceRdd.mapPartitionsToPair(new PairFlatMapFunction<Iterator<Block>, BigDecimal, Block>() {
-						public Iterable<Tuple2<BigDecimal, Block>> call(Iterator<Block> t) throws Exception {
-							List<Tuple2<BigDecimal, Block>> list = Lists.newArrayList();
-							while(t.hasNext()) {
-								Block b = t.next();
-								list.add(new Tuple2<BigDecimal, Block>(b.getFingerPrint(), b));
-							}
-							return list;
-						}
-					})
+			    	sourceRdd = sourceRdd.mapPartitionsToPair(new BlockMapPartition())
 					.mapPartitionsWithIndex(new PartitionDataHandler(true), true)
-					.mapToPair(new PairFunction<Tuple2<Integer,Tuple2<BigDecimal,Block>>, Integer, Tuple2<BigDecimal, Block>>() {
-		
-						public Tuple2<Integer, Tuple2<BigDecimal, Block>> call(Tuple2<Integer, Tuple2<BigDecimal, Block>> t)
-								throws Exception {
-							return t;
-						}
-					})
+					.mapToPair(new TupleToPair())
 					.partitionBy(new SimplePartitioner(sourceRdd.partitions().size()))
 					.values()
 					.map(new Function<Tuple2<BigDecimal,Block>, Block>() {
 		
+						private static final long serialVersionUID = 1L;
+
 						public Block call(Tuple2<BigDecimal, Block> v1) throws Exception {
 							return v1._2();
 						}
@@ -160,12 +136,7 @@ public class ChimergeDiscretizer implements Serializable {
 			    
 			    // Here now all the Blocks with Chisquare = min have been merged.
 			    // Lets compute ChiSquare until Chisquare is greater than the allowed threshold
-			    blocks = sourceRdd.mapToPair(new PairFunction<Block, BigDecimal, Block>() {
-	
-					public Tuple2<BigDecimal, Block> call(Block t) throws Exception {
-						return new Tuple2<BigDecimal, Block>(t.getFingerPrint(), t);
-					}
-				});
+			    blocks = sourceRdd.mapToPair(new BlockToPair());
 			    
 		    } // end of big while (Threshold value)
 	
@@ -177,9 +148,12 @@ public class ChimergeDiscretizer implements Serializable {
 	}
 	
 	public static JavaSparkContext setupSpark() {
+		String[] jars = {"/Users/rmysoreradhakrishna/git-workspace/Spark-Chimerge/build/libs/Spark-Chimerge-1.0.jar"};
 		SparkConf sparkConf = new SparkConf().setAppName("Chimerge");
-		sparkConf.setMaster("local");
-	    //sparkConf.setMaster("spark://BELC02MQ17MFD58.sea.corp.expecn.com:7077");
+		sparkConf.setMaster("local[4]");
+	    sparkConf.setMaster("spark://BELC02MQ17MFD58.sea.corp.expecn.com:7077");
+		sparkConf.setSparkHome("/Users/rmysoreradhakrishna/Downloads/spark-1.1.0-bin-hadoop1/");
+		sparkConf.setJars(jars);
 	    sparkConf.set("spark.executor.memory", "1g");
 	    sparkConf.set("spark.driver.memory", "1g");
 	    return new JavaSparkContext(sparkConf);

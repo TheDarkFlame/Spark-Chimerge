@@ -11,9 +11,9 @@ import scala.Tuple2;
 
 import com.google.common.collect.Lists;
 
-@SuppressWarnings("serial")
 public class PartitionDataHandler implements Function2<Integer, Iterator<Tuple2<BigDecimal, Block>>, Iterator<Tuple2<Integer, Tuple2<BigDecimal, Block>>>>, Serializable {
 	
+	private static final long serialVersionUID = 1L;
 	private boolean moveFirstRecordToPreviousPartition = false;
 	
 	public PartitionDataHandler(boolean moveFirstRecordToPreviousPartition) {

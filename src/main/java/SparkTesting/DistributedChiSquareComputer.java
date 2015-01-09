@@ -13,8 +13,9 @@ import scala.Tuple2;
 
 import com.google.common.collect.Lists;
 
-@SuppressWarnings("serial")
 public class DistributedChiSquareComputer implements Serializable, FlatMapFunction<Iterator<Tuple2<Integer,Tuple2<BigDecimal,Block>>>, ChisquareUnit> {
+
+	private static final long serialVersionUID = 1L;
 
 	public Iterable<ChisquareUnit> call(Iterator<Tuple2<Integer, Tuple2<BigDecimal, Block>>> t) throws Exception {
 		List<Tuple2<BigDecimal, Block>> rawList = Lists.newArrayList();

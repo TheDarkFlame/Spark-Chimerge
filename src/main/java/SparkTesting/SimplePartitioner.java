@@ -4,9 +4,9 @@ import java.io.Serializable;
 
 import org.apache.spark.Partitioner;
 
-@SuppressWarnings("serial")
 public  class SimplePartitioner extends Partitioner  implements Serializable {
 
+	private static final long serialVersionUID = 1L;
 	private int partitions;
 	
 	public SimplePartitioner(int num) {

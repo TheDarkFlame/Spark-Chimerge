@@ -10,8 +10,9 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 
 import com.google.common.collect.Lists;
 
-@SuppressWarnings("serial")
 public class BlockMergeHandler implements Serializable, FlatMapFunction<Iterator<Block>, Block>{
+
+	private static final long serialVersionUID = 1L;
 
 	public Iterable<Block> call(Iterator<Block> t) throws Exception {
 		List<Block> list = Lists.newArrayList();

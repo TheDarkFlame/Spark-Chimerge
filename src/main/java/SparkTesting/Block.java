@@ -18,8 +18,9 @@ import com.google.common.collect.Sets;
  * This will be one unit of data. 
  */
 
-@SuppressWarnings("serial")
 public class Block implements Serializable {
+	
+	private static final long serialVersionUID = 1L;
 	
 	Map<Double, List<AttributeLabelPair>> map = Maps.newHashMap();
 

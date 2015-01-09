@@ -3,12 +3,10 @@ package SparkTesting;
 import java.io.Serializable;
 import java.math.BigDecimal;
 
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.Table;
-
-@SuppressWarnings("serial")
 public class ChiSqaureTable implements Serializable{
 	
+	private static final long serialVersionUID = 1L;
+
 	public static BigDecimal getChiSquareValue(int dof, double threshold) {
 		
 //		Table<Integer, BigDecimal, BigDecimal> table = HashBasedTable.create();

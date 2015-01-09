@@ -2,9 +2,9 @@ package SparkTesting;
 
 import java.io.Serializable;
 
-@SuppressWarnings("serial")
 public class RawDataLine implements Serializable {
 	
+	private static final long serialVersionUID = 1L;
 	private String[] parts;
 	
 	public RawDataLine(String data) {

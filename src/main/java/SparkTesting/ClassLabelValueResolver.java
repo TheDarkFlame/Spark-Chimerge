@@ -5,9 +5,9 @@ import java.util.Map;
 
 import com.google.common.collect.Maps;
 
-@SuppressWarnings("serial")
 public class ClassLabelValueResolver implements Serializable {
 
+	private static final long serialVersionUID = 1L;
 	private Map<String, Double> map = Maps.newConcurrentMap();
 	
 	public ClassLabelValueResolver(String commaSeparatedDistinctValues) {

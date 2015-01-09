@@ -7,8 +7,9 @@ import org.apache.spark.api.java.function.Function;
 
 import com.google.common.collect.Lists;
 
-@SuppressWarnings("serial")
 public class AttributeBlockCreator implements Function<Iterable<AttributeLabelPair>, Block>, Serializable {
+
+	private static final long serialVersionUID = 1L;
 
 	public Block call(Iterable<AttributeLabelPair> v1) throws Exception {
 		List<AttributeLabelPair> records = Lists.newArrayList(v1);

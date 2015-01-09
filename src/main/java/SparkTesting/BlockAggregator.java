@@ -9,9 +9,9 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 
 import com.google.common.collect.Lists;
 
-@SuppressWarnings("serial")
 public class BlockAggregator implements Serializable, FlatMapFunction<Iterator<ChisquareUnit>, Block> {
 	
+	private static final long serialVersionUID = 1L;
 	private BigDecimal minimum; 
 	
 	public BlockAggregator(BigDecimal min) {
