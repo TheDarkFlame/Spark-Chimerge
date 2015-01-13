@@ -34,7 +34,7 @@ public class ChimergeDiscretizer implements Serializable {
 
 	public static void main(String[] args) {
 		Logger.getRootLogger().setLevel(Level.OFF);
-	    JavaSparkContext jsc = setupSpark();
+	    JavaSparkContext jsc = setupSpark(true);
 	    
 	    //TODO: How to  distinct classLabels
 	    ClassLabelValueResolver resolver = new ClassLabelValueResolver("Iris-setosa, Iris-virginica, Iris-versicolor");
@@ -75,7 +75,7 @@ public class ChimergeDiscretizer implements Serializable {
 		    JavaPairRDD<BigDecimal, Block> blocks = groupByKey.mapValues(new AttributeBlockCreator());
 		    
 		    BigDecimal min = BigDecimal.valueOf(Double.MIN_VALUE);
-			BigDecimal threshold = ChiSqaureTable.getChiSquareValue(2, 0.001d);
+			BigDecimal threshold = ChiSqaureTable.getChiSquareValue(2, 0.1d);
 			JavaRDD<Block> sourceRdd = null;
 			
 			while(min.compareTo(threshold) < 0) {
@@ -147,13 +147,17 @@ public class ChimergeDiscretizer implements Serializable {
 	    
 	}
 	
-	public static JavaSparkContext setupSpark() {
-		String[] jars = {"/Users/rmysoreradhakrishna/git-workspace/Spark-Chimerge/build/libs/Spark-Chimerge-1.0.jar"};
+	public static JavaSparkContext setupSpark(boolean local) {
+		
 		SparkConf sparkConf = new SparkConf().setAppName("Chimerge");
-		sparkConf.setMaster("local[4]");
-//	    sparkConf.setMaster("spark://BELC02MQ17MFD58.sea.corp.expecn.com:7077");
-//		sparkConf.setSparkHome("/Users/rmysoreradhakrishna/Downloads/spark-1.1.0-bin-hadoop1/");
-//		sparkConf.setJars(jars);
+		if(local) {
+			sparkConf.setMaster("local[4]");
+		} else {
+			String[] jars = {"/Users/rmysoreradhakrishna/git-workspace/Spark-Chimerge/build/libs/Spark-Chimerge-1.0.jar"};
+		    sparkConf.setMaster("spark://BELC02MQ17MFD58.sea.corp.expecn.com:7077");
+			sparkConf.setSparkHome("/Users/rmysoreradhakrishna/Downloads/spark-1.1.0-bin-hadoop1/");
+			sparkConf.setJars(jars);
+		}
 	    sparkConf.set("spark.executor.memory", "1g");
 	    sparkConf.set("spark.driver.memory", "1g");
 	    return new JavaSparkContext(sparkConf);
