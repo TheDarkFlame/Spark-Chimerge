@@ -36,15 +36,16 @@ public class ChimergeDiscretizer implements Serializable {
 		Logger.getRootLogger().setLevel(Level.OFF);
 	    JavaSparkContext jsc = setupSpark(true);
 	    
-	    //TODO: How to  distinct classLabels
+	    //TODO: properties
 	    ClassLabelValueResolver resolver = new ClassLabelValueResolver("Iris-setosa, Iris-virginica, Iris-versicolor");
 	    
-	    //TODO: How to getColumnLabels
+	    //TODO: properties
 	    String[] columns = {"SL","SW","PL","PW"};
 	    
 	    long startTime = System.currentTimeMillis(); // For time measurement.
 	    
 	    // Read the data from the file.
+	    //TODO: properties - filename or agrument
 	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", 4);
 	    
 	    JavaRDD<RawDataLine> rawData = stringRdd.map(new Function<String, RawDataLine>() {
@@ -57,7 +58,6 @@ public class ChimergeDiscretizer implements Serializable {
 	    
 	    // Compute Chimerge for all attributes.
 	    //TODO: make this parallel. Tricky
-	    
 	    int numberOfAttributes = rawData.first().numberOfAttributes(); 
 	    for(int j = 0; j < numberOfAttributes; j++) {
 	    	
@@ -75,7 +75,7 @@ public class ChimergeDiscretizer implements Serializable {
 		    JavaPairRDD<BigDecimal, Block> blocks = groupByKey.mapValues(new AttributeBlockCreator());
 		    
 		    BigDecimal min = BigDecimal.valueOf(Double.MIN_VALUE);
-			BigDecimal threshold = ChiSqaureTable.getChiSquareValue(2, 0.1d);
+			BigDecimal threshold = ChiSqaureTable.getChiSquareValue(resolver.getNumberOfClassLabels() - 1, 0.1d);
 			JavaRDD<Block> sourceRdd = null;
 			
 			while(min.compareTo(threshold) < 0) {

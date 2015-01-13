@@ -23,6 +23,7 @@ public class ChiSqaureTable implements Serializable {
 
 	public static BigDecimal getChiSquareValue(int dof, double threshold) {
 		// if the exact value is not found, decrease dof until you get a match
+		
 		if(!table.containsColumn(BigDecimal.valueOf(threshold))) {
 			throw new IllegalArgumentException("Threshold does not exist.");
 		}

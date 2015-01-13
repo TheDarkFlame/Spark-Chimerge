@@ -21,4 +21,8 @@ public class ClassLabelValueResolver implements Serializable {
 	public Double getClassLabelValue(String classLabel) {
 		return map.get(classLabel);
 	}
+	
+	public Integer getNumberOfClassLabels() {
+		return this.map.size();
+	}
 }
