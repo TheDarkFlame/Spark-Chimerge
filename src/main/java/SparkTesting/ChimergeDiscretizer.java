@@ -32,6 +32,8 @@ public class ChimergeDiscretizer implements Serializable {
 	
 	private static final long serialVersionUID = 1L;
 
+	private static final Integer NUM_ROWS_PER_PARTITION = 100000; // 100,000
+	
 	public static void main(String[] args) {
 		Logger.getRootLogger().setLevel(Level.OFF);
 	    JavaSparkContext jsc = setupSpark(true);
@@ -42,11 +44,15 @@ public class ChimergeDiscretizer implements Serializable {
 	    //TODO: properties
 	    String[] columns = {"SL","SW","PL","PW"};
 	    
+	    //TODO: properties.
+	    int dataSize = 150;
+	    
+	    int numOfPartitions = (dataSize / NUM_ROWS_PER_PARTITION) + 1;
+	    
 	    long startTime = System.currentTimeMillis(); // For time measurement.
 	    
-	    // Read the data from the file.
-	    //TODO: properties - filename or agrument
-	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", 4);
+	    //TODO: properties - filename or argument
+	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", numOfPartitions);
 	    
 	    JavaRDD<RawDataLine> rawData = stringRdd.map(new Function<String, RawDataLine>() {
 			private static final long serialVersionUID = 1L;
