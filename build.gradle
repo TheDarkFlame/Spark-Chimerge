@@ -5,7 +5,18 @@ sourceCompatibility = 1.5
 version = '1.0'
 jar {
     manifest {
-        attributes 'Implementation-Title': 'Gradle Quickstart', 'Implementation-Version': version
+        attributes 'Implementation-Title': 'Gradle Spark-Chimerge', 'Implementation-Version': version
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir 'src/java'
+        }
+        resources {
+            srcDir 'src/resources'
+        }
     }
 }
 

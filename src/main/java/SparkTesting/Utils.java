@@ -30,7 +30,7 @@ public final class Utils implements Serializable{
 		System.out.println("Attribute: " + blocks.get(0).getAllRecords().get(0).getAttributeName());
 		for (Block b : blocks) {
 			if(firstCut) {
-				System.out.println(b.getMinRange() + "  to " + b.getMaxRange());
+				System.out.println(b.getMinRange() + " to " + b.getMaxRange());
 				firstCut = false;
 			} else {
 				System.out.println(low + " to " + b.getMaxRange());
