@@ -1,3 +1,6 @@
 **/*.class
 bin/
 **/Mainclass.java
+
+.gradle/1.4/taskArtifacts/fileHashes.bin
+build/**
