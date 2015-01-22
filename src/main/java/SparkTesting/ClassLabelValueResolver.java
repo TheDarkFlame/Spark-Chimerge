@@ -14,12 +14,12 @@ public class ClassLabelValueResolver implements Serializable {
 		final String[] labels = commaSeparatedDistinctValues.split(",");
 		double i = 0;
 		for(String classLabel: labels) {
-			map.put(classLabel.trim(), i++);
+			map.put(classLabel.trim().toLowerCase(), i++);
 		}
 	}
 	
 	public Double getClassLabelValue(String classLabel) {
-		return map.get(classLabel);
+		return map.get(classLabel.trim().toLowerCase());
 	}
 	
 	public Integer getNumberOfClassLabels() {
