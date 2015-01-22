@@ -44,14 +44,11 @@ public class ChimergeDiscretizer implements Serializable {
 		}
 	    JavaSparkContext jsc = setupSpark(properties);
 	    
-	    //TODO: properties
 	    ClassLabelValueResolver resolver = 
 	    		new ClassLabelValueResolver(properties.getProperty(Property.APP_CLASS_LABEL_VALUES.getPropertyName()));
 	    
-	    //TODO: properties
 	    String[] columns = properties.getProperty(Property.APP_COLUMN_NAMES.getPropertyName()).split(",");
 	    
-	    //TODO: properties.
 	    int dataSize = Integer.valueOf(properties.getProperty(Property.APP_APPROX_DATA_ROWS.getPropertyName()));
 	    
 	    if(properties.getProperty(Property.APP_ROWS_PER_PARTITION.getPropertyName()) != null) {
@@ -62,7 +59,6 @@ public class ChimergeDiscretizer implements Serializable {
 	    
 	    long startTime = System.currentTimeMillis(); // For time measurement.
 	    
-	    //TODO: properties - filename or argument
 	    String dataFile = properties.getProperty(Property.APP_DATA_FILE.getPropertyName());
 	    JavaRDD<String> stringRdd = jsc.textFile(dataFile, numOfPartitions);
 	    

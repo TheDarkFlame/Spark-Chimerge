@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.net.URISyntaxException;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
@@ -18,7 +19,11 @@ public class ChiSqaureTable implements Serializable {
 	private static final Table<Integer, BigDecimal, BigDecimal> table = HashBasedTable.create();
 	
 	static {
-		load();
+		try {
+			load();
+		} catch (URISyntaxException e) {
+			throw new IllegalStateException("could not load Chisquare table.");
+		}
 	}
 
 	public static BigDecimal getChiSquareValue(int dof, double threshold) {
@@ -34,8 +39,8 @@ public class ChiSqaureTable implements Serializable {
 		return table.get(dof, BigDecimal.valueOf(threshold));
 	}
 	
-	private static void load() {
-		File f = new File("./chisquareTable/ChiSquare.csv");
+	private static void load() throws URISyntaxException {
+		File f = new File(ClassLoader.getSystemResource("ChiSquare.csv").toURI());
 		List<String> lines = null;
 		try {
 			lines = FileUtils.readLines(f);
