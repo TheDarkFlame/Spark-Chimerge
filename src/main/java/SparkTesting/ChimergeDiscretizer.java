@@ -1,7 +1,9 @@
 package SparkTesting;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.Properties;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -32,27 +34,37 @@ public class ChimergeDiscretizer implements Serializable {
 	
 	private static final long serialVersionUID = 1L;
 
-	private static final Integer NUM_ROWS_PER_PARTITION = 100000; // 100,000
+	private static Integer NUM_ROWS_PER_PARTITION = 100000; // 100,000
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		Logger.getRootLogger().setLevel(Level.OFF);
-	    JavaSparkContext jsc = setupSpark(false);
+		Properties properties = Utils.loadProperties(args[0]);
+		if(properties == null) {
+			throw new IllegalStateException("Please provide properties file.");
+		}
+	    JavaSparkContext jsc = setupSpark(properties);
 	    
 	    //TODO: properties
-	    ClassLabelValueResolver resolver = new ClassLabelValueResolver("Iris-setosa, Iris-virginica, Iris-versicolor");
+	    ClassLabelValueResolver resolver = 
+	    		new ClassLabelValueResolver(properties.getProperty(Property.APP_CLASS_LABEL_VALUES.getPropertyName()));
 	    
 	    //TODO: properties
-	    String[] columns = {"SL","SW","PL","PW"};
+	    String[] columns = properties.getProperty(Property.APP_COLUMN_NAMES.getPropertyName()).split(",");
 	    
 	    //TODO: properties.
-	    int dataSize = 150;
+	    int dataSize = Integer.valueOf(properties.getProperty(Property.APP_APPROX_DATA_ROWS.getPropertyName()));
+	    
+	    if(properties.getProperty(Property.APP_ROWS_PER_PARTITION.getPropertyName()) != null) {
+	    	NUM_ROWS_PER_PARTITION = Integer.valueOf(properties.getProperty(Property.APP_ROWS_PER_PARTITION.getPropertyName()));
+	    }
 	    
 	    int numOfPartitions = (dataSize / NUM_ROWS_PER_PARTITION) + 1;
 	    
 	    long startTime = System.currentTimeMillis(); // For time measurement.
 	    
 	    //TODO: properties - filename or argument
-	    JavaRDD<String> stringRdd = jsc.textFile("./testData/Iris.txt", numOfPartitions);
+	    String dataFile = properties.getProperty(Property.APP_DATA_FILE.getPropertyName());
+	    JavaRDD<String> stringRdd = jsc.textFile(dataFile, numOfPartitions);
 	    
 	    JavaRDD<RawDataLine> rawData = stringRdd.map(new Function<String, RawDataLine>() {
 			private static final long serialVersionUID = 1L;
@@ -63,6 +75,7 @@ public class ChimergeDiscretizer implements Serializable {
 		});
 	    
 	    // Compute Chimerge for all attributes.
+
 	    //TODO: make this parallel. Tricky
 	    int numberOfAttributes = rawData.first().numberOfAttributes(); 
 	    for(int j = 0; j < numberOfAttributes; j++) {
@@ -153,19 +166,20 @@ public class ChimergeDiscretizer implements Serializable {
 	    
 	}
 	
-	public static JavaSparkContext setupSpark(boolean local) {
+	public static JavaSparkContext setupSpark(Properties properties) {
 		
-		SparkConf sparkConf = new SparkConf().setAppName("Chimerge");
-		if(local) {
-			sparkConf.setMaster("local[4]");
-		} else {
-			//String[] jars = {"/Users/rmysoreradhakrishna/git-workspace/Spark-Chimerge/build/libs/Spark-Chimerge-1.0.jar"};
-		    //sparkConf.setMaster("spark://BELC02MQ17MFD58.sea.corp.expecn.com:7077");
-			//sparkConf.setSparkHome("/Users/rmysoreradhakrishna/Downloads/spark-1.1.0-bin-hadoop1/");
-			//sparkConf.setJars(jars);
+		SparkConf sparkConf = new SparkConf().setAppName("Spark-Chimerge");
+		if(properties.getProperty(Property.CONF_MASTER_URL.getPropertyName()) != null) {
+			sparkConf.setMaster(properties.getProperty(Property.CONF_MASTER_URL.getPropertyName()));
 		}
-	    sparkConf.set("spark.executor.memory", "1g");
-	    sparkConf.set("spark.driver.memory", "1g");
+		
+		if(properties.getProperty(Property.CONF_EXECUTOR_MEMORY.getPropertyName()) != null) {
+			sparkConf.set("spark.executor.memory", properties.getProperty(Property.CONF_EXECUTOR_MEMORY.getPropertyName()));
+		}
+		
+		if(properties.getProperty(Property.CONF_DRIVER_MEMORY.getPropertyName()) != null) {
+			sparkConf.set("spark.driver.memory", properties.getProperty(Property.CONF_DRIVER_MEMORY.getPropertyName()));
+		}
 	    return new JavaSparkContext(sparkConf);
 	}
 }

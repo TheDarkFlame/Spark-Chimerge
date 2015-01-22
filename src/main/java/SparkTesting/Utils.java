@@ -1,9 +1,12 @@
 package SparkTesting;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Properties;
 
 import org.apache.spark.api.java.JavaRDD;
 
@@ -34,5 +37,11 @@ public final class Utils implements Serializable{
 			}
 			low = b.getMaxRange();
 		}
+	}
+	
+	public static Properties loadProperties(String pathToPropertiesFile) throws IOException {
+		Properties p = new Properties();
+		p.load(new FileInputStream(pathToPropertiesFile));
+		return p;
 	}
 }
