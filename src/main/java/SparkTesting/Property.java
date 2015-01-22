@@ -7,6 +7,7 @@ public enum Property {
 	APP_DATA_FILE("data.filename.with.path"),
 	APP_APPROX_DATA_ROWS("approx.data.rows"),
 	APP_ROWS_PER_PARTITION("rows.per.partition"),
+	APP_CHISQUARE_THRESHOLD("chisquare.threshold"),
 	
 	CONF_MASTER_URL("spark.master.url"),
 	CONF_EXECUTOR_MEMORY("executor.memory"),

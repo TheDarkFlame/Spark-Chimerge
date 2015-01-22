@@ -34,7 +34,9 @@ public class ChimergeDiscretizer implements Serializable {
 	
 	private static final long serialVersionUID = 1L;
 
-	private static Integer NUM_ROWS_PER_PARTITION = 100000; // 100,000
+	private static Integer NUM_ROWS_PER_PARTITION = 100000; // 100,000. Default
+	
+	private static BigDecimal THRESHOLD = BigDecimal.valueOf(01.d); //Default
 	
 	public static void main(String[] args) throws IOException {
 		Logger.getRootLogger().setLevel(Level.OFF);
@@ -53,6 +55,10 @@ public class ChimergeDiscretizer implements Serializable {
 	    
 	    if(properties.getProperty(Property.APP_ROWS_PER_PARTITION.getPropertyName()) != null) {
 	    	NUM_ROWS_PER_PARTITION = Integer.valueOf(properties.getProperty(Property.APP_ROWS_PER_PARTITION.getPropertyName()));
+	    }
+	
+	    if(properties.getProperty(Property.APP_CHISQUARE_THRESHOLD.getPropertyName()) != null) {
+	    	THRESHOLD = new BigDecimal(properties.getProperty(Property.APP_ROWS_PER_PARTITION.getPropertyName()));
 	    }
 	    
 	    int numOfPartitions = (dataSize / NUM_ROWS_PER_PARTITION) + 1;
@@ -90,7 +96,7 @@ public class ChimergeDiscretizer implements Serializable {
 		    JavaPairRDD<BigDecimal, Block> blocks = groupByKey.mapValues(new AttributeBlockCreator());
 		    
 		    BigDecimal min = BigDecimal.valueOf(Double.MIN_VALUE);
-			BigDecimal threshold = ChiSqaureTable.getChiSquareValue(resolver.getNumberOfClassLabels() - 1, 0.1d);
+			BigDecimal threshold = ChiSqaureTable.getChiSquareValue(resolver.getNumberOfClassLabels() - 1, THRESHOLD);
 			JavaRDD<Block> sourceRdd = null;
 			
 			while(min.compareTo(threshold) < 0) {

@@ -18,17 +18,17 @@ public class ChiSqaureTable implements Serializable {
 		load();
 	}
 
-	public static BigDecimal getChiSquareValue(int dof, double threshold) {
+	public static BigDecimal getChiSquareValue(int dof, BigDecimal threshold) {
 		// if the exact value is not found, decrease dof until you get a match
 
-		if (!table.containsColumn(BigDecimal.valueOf(threshold))) {
+		if (!table.containsColumn(threshold)) {
 			throw new IllegalArgumentException("Threshold does not exist.");
 		}
 
 		while (!table.containsRow(dof)) {
 			dof--;
 		}
-		return table.get(dof, BigDecimal.valueOf(threshold));
+		return table.get(dof, threshold);
 	}
 
 	private static void load() {
