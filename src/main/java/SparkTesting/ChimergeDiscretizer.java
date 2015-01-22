@@ -36,7 +36,7 @@ public class ChimergeDiscretizer implements Serializable {
 
 	private static Integer NUM_ROWS_PER_PARTITION = 100000; // 100,000. Default
 	
-	private static BigDecimal THRESHOLD = BigDecimal.valueOf(01.d); //Default
+	private static BigDecimal THRESHOLD = BigDecimal.valueOf(0.1d); //Default
 	
 	public static void main(String[] args) throws IOException {
 		Logger.getRootLogger().setLevel(Level.OFF);
@@ -58,7 +58,7 @@ public class ChimergeDiscretizer implements Serializable {
 	    }
 	
 	    if(properties.getProperty(Property.APP_CHISQUARE_THRESHOLD.getPropertyName()) != null) {
-	    	THRESHOLD = new BigDecimal(properties.getProperty(Property.APP_ROWS_PER_PARTITION.getPropertyName()));
+	    	THRESHOLD = new BigDecimal(properties.getProperty(Property.APP_CHISQUARE_THRESHOLD.getPropertyName()));
 	    }
 	    
 	    int numOfPartitions = (dataSize / NUM_ROWS_PER_PARTITION) + 1;
