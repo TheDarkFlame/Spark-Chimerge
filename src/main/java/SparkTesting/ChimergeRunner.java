@@ -75,42 +75,44 @@ public class ChimergeRunner implements Callable<JavaRDD<Block>>, Serializable {
 		    // Compute the Global minimum of the Chisquare and then merge the Blocks with the minimum value. 
 		    min = BigDecimal.valueOf(chiSquaredRdd.min(new ChiSquareUnitSorter()).getChiSquareValue());
 		    
-		    // Now lets return combined Block for all ChiSquareUnits whose value is equal to the minimum
-		    // Otherwise, return the two blocks separate without combining them.
-		    JavaRDD<Block> cm = chiSquaredRdd.mapPartitions(new BlockAggregator(min));
-		    
-		    // ******* begin loop : Merging/reducing  *******
-		    // Here the idea is that, we always move the first element from the partition to the previous partition.
-		    // i.e. move the first element from 1st partition to the oth partition. This way we give chance 
-		    // for the elements to merge across partitions.
-		    // the number of iterations  = partitions size. We need to give each partition a fair chance. 
-		    sourceRdd = cm;
-		    
-		    int i = 0;
-		    do {
-		    	i++;
-		    	sourceRdd = sourceRdd.mapPartitions(new BlockMergeHandler());
-		    	
-		    	sourceRdd = sourceRdd.mapPartitionsToPair(new BlockMapPartition())
-				.mapPartitionsWithIndex(new PartitionDataHandler(true), true)
-				.mapToPair(new TupleToPair())
-				.partitionBy(new SimplePartitioner(sourceRdd.partitions().size()))
-				.values()
-				.map(new Function<Tuple2<BigDecimal,Block>, Block>() {
+		    if(min.compareTo(threshold) < 0) {
+			    // Now lets return combined Block for all ChiSquareUnits whose value is equal to the minimum
+			    // Otherwise, return the two blocks separate without combining them.
+			    JavaRDD<Block> cm = chiSquaredRdd.mapPartitions(new BlockAggregator(min));
+			    
+			    // ******* begin loop : Merging/reducing  *******
+			    // Here the idea is that, we always move the first element from the partition to the previous partition.
+			    // i.e. move the first element from 1st partition to the oth partition. This way we give chance 
+			    // for the elements to merge across partitions.
+			    // the number of iterations  = partitions size. We need to give each partition a fair chance. 
+			    sourceRdd = cm;
+			    
+			    int i = 0;
+			    do {
+			    	i++;
+			    	sourceRdd = sourceRdd.mapPartitions(new BlockMergeHandler());
+			    	
+			    	sourceRdd = sourceRdd.mapPartitionsToPair(new BlockMapPartition())
+					.mapPartitionsWithIndex(new PartitionDataHandler(true), true)
+					.mapToPair(new TupleToPair())
+					.partitionBy(new SimplePartitioner(sourceRdd.partitions().size()))
+					.values()
+					.map(new Function<Tuple2<BigDecimal,Block>, Block>() {
+		
+						private static final long serialVersionUID = 1L;
 	
-					private static final long serialVersionUID = 1L;
-
-					public Block call(Tuple2<BigDecimal, Block> v1) throws Exception {
-						return v1._2();
-					}
-				});
-				
-		    } while(i < sourceRdd.partitions().size());
-		    // ******* end loop : Merging/reducing  *******
-		    
-		    // Here now all the Blocks with Chisquare = min have been merged.
-		    // Lets compute ChiSquare until Chisquare is greater than the allowed threshold
-		    blocks = sourceRdd.mapToPair(new BlockToPair());
+						public Block call(Tuple2<BigDecimal, Block> v1) throws Exception {
+							return v1._2();
+						}
+					});
+					
+			    } while(i < sourceRdd.partitions().size());
+			    // ******* end loop : Merging/reducing  *******
+			    
+			    // Here now all the Blocks with Chisquare = min have been merged.
+			    // Lets compute ChiSquare until Chisquare is greater than the allowed threshold
+			    blocks = sourceRdd.mapToPair(new BlockToPair());
+			}
 		    
 	    } // end of big while (Threshold value)
 		

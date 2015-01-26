@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src/main/java"/>
+	<classpathentry kind="src" path="src/main/resources"/>
 	<classpathentry exported="true" kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry exported="true" kind="con" path="org.springsource.ide.eclipse.gradle.classpathcontainer"/>
 	<classpathentry exported="true" kind="lib" path="/Users/rmysoreradhakrishna/.gradle/caches/artifacts-23/filestore/org.apache.spark/spark-mllib_2.10/1.1.0/jar/de933d783213cb2f14eddd25071a6a56a660eed4/spark-mllib_2.10-1.1.0.jar" sourcepath="/Users/rmysoreradhakrishna/.gradle/caches/artifacts-23/filestore/org.apache.spark/spark-mllib_2.10/1.1.0/source/9979dba19b078784af5c32f156866e254d970a12/spark-mllib_2.10-1.1.0-sources.jar"/>
