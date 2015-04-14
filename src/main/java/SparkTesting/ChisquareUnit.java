@@ -21,39 +21,45 @@ public class ChisquareUnit implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
-	private Blockie block1;
+	private Block block1;
 
-	private Blockie block2;
+	private Block block2;
 
 	private Double chiSquareValue;
 
-	public ChisquareUnit(Blockie block1, Blockie block2) {
+	public ChisquareUnit(Block block1, Block block2) {
 		this.block1 = block1;
 		this.block2 = block2;
 		
 	}
 	
 	public void computeChiSquare() {
-		this.chiSquareValue = Statistics.chiSqTest(mergeMatricies(computeSingleRowMatrix(block1), computeSingleRowMatrix(block2))).statistic();
+		this.chiSquareValue = Statistics.
+				chiSqTest(
+						mergeMatricies(
+								computeSingleRowMatrix(block1), 
+								computeSingleRowMatrix(block2)
+								)
+						).statistic();
 	}
 
 	public Double getChiSquareValue() {
 		return chiSquareValue;
 	}
 
-	public Blockie getBlock1() {
+	public Block getBlock1() {
 		return block1;
 	}
 
-	public Blockie getBlock2() {
+	public Block getBlock2() {
 		return block2;
 	}
 
-	private Table<String, Double, Integer> computeSingleRowMatrix(Blockie block) {
-		List<IrisRecord> records = block.getAllRecords();
+	private Table<String, Double, Integer> computeSingleRowMatrix(Block block) {
+		List<AttributeLabelPair> records = block.getAllRecords();
 		Set<Double> uniqueClassLabel = Sets.newHashSet();
-		for(IrisRecord i: records){
-			uniqueClassLabel.add(i.getSpecies());
+		for(AttributeLabelPair i: records){
+			uniqueClassLabel.add(i.getClassLabel());
 		}
 		
 		Table<String, Double, Integer> table = HashBasedTable.create();
@@ -61,9 +67,9 @@ public class ChisquareUnit implements Serializable {
 			table.put("Row", d , 0);
 		}
 		
-		for (IrisRecord iris : records) {
-			int count = table.get("Row", iris.getSpecies());
-			table.put("Row", iris.getSpecies(), ++count);
+		for (AttributeLabelPair iris : records) {
+			int count = table.get("Row", iris.getClassLabel());
+			table.put("Row", iris.getClassLabel(), ++count);
 		}
 		
 		return table;

@@ -18,20 +18,21 @@ import com.google.common.collect.Sets;
  * This will be one unit of data. 
  */
 
-@SuppressWarnings("serial")
-public class Blockie implements Serializable {
+public class Block implements Serializable {
 	
-	Map<Double, List<IrisRecord>> map = Maps.newHashMap();
+	private static final long serialVersionUID = 1L;
+	
+	Map<Double, List<AttributeLabelPair>> map = Maps.newHashMap();
 
-	public Blockie(List<IrisRecord> records, Double id) {
+	public Block(List<AttributeLabelPair> records, Double id) {
 		this.map.put(id, records);
 	}
 
-	private Blockie(Map<Double, List<IrisRecord>> map) {
+	private Block(Map<Double, List<AttributeLabelPair>> map) {
 		this.map = map;
 	}
 	
-	public List<IrisRecord> getRecordsForId(Double id) {
+	public List<AttributeLabelPair> getRecordsForId(Double id) {
 		return map.get(id);
 	}
 
@@ -44,11 +45,11 @@ public class Blockie implements Serializable {
 		return "Blockie [values = " + getIds() + "]";
 	}
 
-	public boolean contains(Blockie b) {
+	public boolean contains(Block b) {
 		return this.map.keySet().containsAll(b.getMap().keySet());
 	}
 
-	public Map<Double, List<IrisRecord>> getMap() {
+	public Map<Double, List<AttributeLabelPair>> getMap() {
 		return map;
 	}
 	
@@ -60,31 +61,37 @@ public class Blockie implements Serializable {
 		return fingerPrint.divide(BigDecimal.valueOf(getIds().size()), RoundingMode.HALF_EVEN);
 	}
 	
-	public Blockie merge(Blockie b) {
-		Map<Double, List<IrisRecord>> map = Maps.newHashMap();
+	public Block merge(Block b) {
+		Map<Double, List<AttributeLabelPair>> map = Maps.newHashMap();
 		map.putAll(this.map);
 		map.putAll(b.getMap());
-		return new Blockie(map);
+		return new Block(map);
 	}
 	
-	public boolean overlaps(Blockie b) {
+	public boolean overlaps(Block b) {
 		return !Sets.intersection(this.getIds(), b.getIds()).isEmpty();
 	}
 	
-	public List<IrisRecord> getAllRecords() {
-		List<IrisRecord> records = Lists.newArrayList();
-		for(List<IrisRecord> list: map.values()){
+	public List<AttributeLabelPair> getAllRecords() {
+		List<AttributeLabelPair> records = Lists.newArrayList();
+		for(List<AttributeLabelPair> list: map.values()){
 			records.addAll(list);
 		}
 		return records;
 	}
 	
-	public String getRange() {
+	public Double getMaxRange() {
 		List<Double> keys = Lists.newArrayList(map.keySet());
 		Collections.sort(keys);
-		return "[" + keys.get(0) + " - " + keys.get(keys.size() - 1) + "]";
+		return keys.get(keys.size() - 1);
 	}
-
+	
+	public Double getMinRange() {
+		List<Double> keys = Lists.newArrayList(map.keySet());
+		Collections.sort(keys);
+		return keys.get(0);
+	}
+	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -101,7 +108,7 @@ public class Blockie implements Serializable {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		Blockie other = (Blockie) obj;
+		Block other = (Block) obj;
 		if (map == null) {
 			if (other.map != null)
 				return false;
